@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "tokentype.h": "c"
+        "tokentype.h": "c",
+        "statement.h": "c"
     }
 }

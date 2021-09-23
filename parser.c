@@ -1,17 +1,20 @@
 #include <stdlib.h>
 
 #include "expression.h"
+#include "statement.h"
 #include "tokentype.h"
-
+#include "error.h"
 struct Token* head = NULL;
 struct Token* current = NULL;
 struct Token* prev = NULL;
+
+struct Expr* parse_equality();
 
 static struct Token* peek() { return current; }
 
 static struct Token* previous() { return prev; }
 
-static int is_at_end() { return peek()->type == EOF; }
+static int is_at_end() { return peek()->type == END; }
 
 static struct Token* advance() {
         if (!is_at_end()) {
@@ -80,10 +83,34 @@ struct ExprLiteral* make_expr_literal(struct Token* token) {
         return lit;
 }
 
+struct ExprVariable* make_expr_variable(struct Token* name) {
+        struct ExprVariable* var = malloc(sizeof(struct ExprVariable));
+
+        var->obj.type = VARIABLE;
+        var->name = name;
+
+        return var;
+}
+
+struct ExprAssignment* make_expr_assignment(struct Token* name,
+                                            struct Expr* value) {
+        struct ExprAssignment* ass = malloc(sizeof(struct ExprAssignment));
+
+        ass->obj.type = ASSIGNMENT;
+        ass->name = name;
+        ass->value = value;
+
+        return ass;
+}
+
 struct Expr* parse_primary() {
         if (match(FALSE) || match(TRUE) || match(NIL) || match(NUMBER) ||
             match(STRING)) {
                 return make_expr_literal(previous());
+        }
+
+        if (match(IDENTIFIER)) {
+                return make_expr_variable(previous());
         }
 
         if (match(LEFT_PAREN)) {
@@ -186,4 +213,109 @@ struct Expr* parse_equality() {
         }
 
         return left;
+}
+
+struct Expr* parse_assignment() {
+        struct Expr* expr = parse_equality();
+        if (match(EQUAL)) {
+                struct Token* equals = previous();
+                struct Expr* value = parse_assignment();
+
+                if (expr->type == VARIABLE) {
+                        struct Token* name = ((struct ExprVariable*)expr)->name;
+
+                        return make_expr_assignment(name, value);
+                }
+
+                error(equals->line, "Invalid Assignment target!");
+        }
+
+        return expr;
+}
+
+struct Expr* parse_expression() {
+        return parse_assignment();
+}
+
+struct PrintStatement* make_print_statement(struct Expr* expr) {
+        struct PrintStatement* p = malloc(sizeof(struct PrintStatement));
+
+        p->expr = expr;
+        p->obj.type = S_PRINT;
+        p->obj.next = NULL;
+        return p;
+}
+
+struct ExpressionStatement* make_expression_statement(struct Expr* expr) {
+        struct ExpressionStatement* e =
+            malloc(sizeof(struct ExpressionStatement));
+
+        e->expr = expr;
+        e->obj.type = S_EXPR;
+        e->obj.next = NULL;
+
+        return e;
+}
+
+struct VariableStatement* make_variable_statement(struct Token* name,
+                                                  struct Expr* value) {
+        struct VariableStatement* v = malloc(sizeof(struct VariableStatement));
+
+        v->obj.type = S_VAR;
+        v->obj.next = NULL;
+        v->name = name;
+        v->value = value;
+
+        return v;
+}
+
+struct PrintStatement* parse_print_statement() {
+        struct Expr* value = parse_equality();
+
+        consume(SEMICOLON);
+
+        return make_print_statement(value);
+}
+
+struct ExpressionStatement* parse_expression_statement() {
+        struct Expr* value = parse_equality();
+        consume(SEMICOLON);
+        return make_expression_statement(value);
+}
+
+struct VariableStatement* parse_variable_statement() {
+        struct Token* name = consume(IDENTIFIER);
+
+        struct Expr* value = NULL;
+
+        if (match(EQUAL)) {
+                value = parse_equality();
+        }
+        consume(SEMICOLON);
+
+        return make_variable_statement(name, value);
+}
+
+struct Statement* parse_statement() {
+        struct Statement* list = NULL;
+        struct Statement* end = NULL;
+        struct Statement* curr = NULL;
+        while (!is_at_end()) {
+                if (match(PRINT))
+                        curr = parse_print_statement();
+                else if (match(VAR))
+                        curr = parse_variable_statement();
+                else {
+                }
+
+                if (!list) {
+                        list = curr;
+                        end = curr;
+                } else {
+                        end->next = curr;
+                        end = end->next;
+                }
+        }
+
+        return parse_expression_statement();
 }

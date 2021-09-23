@@ -1,8 +1,16 @@
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "environment.h"
+#include "environment_types.h"
 #include "error.h"
 #include "expression.h"
-#include "string.h"
+#include "statement.h"
+
+struct Environment env;
+
+struct Value* evaluate_expr(struct Expr* expr);
 
 struct Value* make_value(enum TokenType value) {
         struct Value* v = malloc(sizeof(struct Value));
@@ -83,12 +91,10 @@ struct Value* visit_literal(struct ExprLiteral* literal) {
         return v;
 }
 
-struct Value * visit_grouping(struct ExprGrouping * group) {
-
-        struct Value * v = evaluate_expr(group->child);
+struct Value* visit_grouping(struct ExprGrouping* group) {
+        struct Value* v = evaluate_expr(group->child);
 
         return v;
-
 }
 
 struct Value* visit_unary(struct ExprUnr* unary) {
@@ -111,12 +117,16 @@ struct Value* visit_unary(struct ExprUnr* unary) {
         return v;
 }
 
+struct Value* visit_variable(struct ExprVariable* variable) {
+        return env_get(&env, variable->name);
+}
+
 struct Value* visit_binary(struct ExprBin* binary) {
         struct Value* l = evaluate_expr(binary->left);
         struct Value* r = evaluate_expr(binary->right);
 
         struct Value* v;
-
+        bool b;
         switch (binary->token->type) {
         case MINUS:
                 check_number_operands(binary->token, l, r);
@@ -144,54 +154,107 @@ struct Value* visit_binary(struct ExprBin* binary) {
                 break;
         case GREATER:
                 check_number_operands(binary->token, l, r);
-                bool b = (l->d > r->d);
+                b = (l->d > r->d);
                 v = make_value(b ? TRUE : FALSE);
                 v->b = b;
                 break;
         case GREATER_EQUAL:
                 check_number_operands(binary->token, l, r);
-                bool b = (l->d >= r->d);
+                b = (l->d >= r->d);
                 v = make_value(b ? TRUE : FALSE);
                 v->b = b;
                 break;
         case LESS:
                 check_number_operands(binary->token, l, r);
-                bool b = (l->d < r->d);
+                b = (l->d < r->d);
                 v = make_value(b ? TRUE : FALSE);
                 v->b = b;
                 break;
         case LESS_EQUAL:
                 check_number_operands(binary->token, l, r);
-                bool b = (l->d <= r->d);
+                b = (l->d <= r->d);
                 v = make_value(b ? TRUE : FALSE);
                 v->b = b;
                 break;
         case BANG_EQUAL:
-                bool not_eq = !is_equal(l, r);
-                v = make_value(not_eq ? TRUE : FALSE);
-                v->b = not_eq ;
+                b = !is_equal(l, r);
+                v = make_value(b ? TRUE : FALSE);
+                v->b = b;
                 break;
         case EQUAL_EQUAL:
-                bool eq = !is_equal(l, r);
-                v = make_value(eq ? TRUE : FALSE);
-                v->b = eq;
+                b = !is_equal(l, r);
+                v = make_value(b ? TRUE : FALSE);
+                v->b = b;
                 break;
         default:
                 break;
         }
+
+        free(l);
+        free(r);
+
+        return v;
+
 }
 
 struct Value* evaluate_expr(struct Expr* expr) {
         switch (expr->type) {
         case BINARY:
-                return visit_binary((struct ExprBin *)expr);
+                return visit_binary((struct ExprBin*)expr);
         case UNARY:
-                return visit_unary((struct ExprUnr *)expr);
+                return visit_unary((struct ExprUnr*)expr);
         case LITERAL:
-                return visit_literal((struct ExprLiteral *)expr);
+                return visit_literal((struct ExprLiteral*)expr);
         case GROUPING:
-                return visit_grouping((struct ExprGrouping *)expr);
+                return visit_grouping((struct ExprGrouping*)expr);
         default:
                 break;
+        }
+}
+
+void visit_expression_stmt(struct ExpressionStatement* stmt) {
+        evaluate_expr(stmt->expr);
+}
+
+void visit_print_stmt(struct PrintStatement* stmt) {
+        struct Value* v = evaluate_expr(stmt->expr);
+
+        switch (v->type) {
+        case NUMBER:
+                printf("%f", v->d);
+                break;
+        case TRUE:
+                printf("true");
+                break;
+        case FALSE:
+                printf("false");
+                break;
+        case STRING:
+                printf(v->s);
+                break;
+        case NIL:
+                printf("nil");
+                break;
+        default:
+                // TODO: unreachable
+                break;
+        }
+        free(v);
+}
+
+void visit_variable_stmt(struct VariableStatement* stmt) {
+        struct Value* v = NULL;
+        if (stmt->value) {
+                v = evaluate_expr(stmt->value);
+        }
+        env_define(&env, stmt->name->lexeme, v);
+        free(v);
+}
+
+void execute(struct Statement* stmt) {}
+
+void interpret(struct Statement* stmts) {
+        for (; stmts != NULL; stmts = stmts->next) {
+                execute(stmts);
         }
 }

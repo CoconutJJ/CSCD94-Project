@@ -64,6 +64,21 @@ void _add_token(struct Token *t) {
         t->line = line;
 }
 
+void add_token_id(enum TokenType token, char *s) {
+        struct Token *t = make_token(token);
+
+        t->lexeme = malloc(strlen(s) + 1);
+
+        if (!t->lexeme) {
+                perror("malloc");
+                exit(EXIT_FAILURE);
+        }
+
+        strcpy(t->lexeme, s);
+
+        _add_token(t);
+}
+
 void add_token_str(enum TokenType token, char *s) {
         struct Token *t = make_token(token);
 
@@ -215,7 +230,7 @@ void add_identifier() {
         enum TokenType t = keyword(ident);
 
         if (t == -1)
-                add_token_str(IDENTIFIER, ident);
+                add_token_id(IDENTIFIER, ident);
         else
                 add_token(t, NULL);
 }
@@ -246,11 +261,11 @@ void add_number() {
 
         num[num_len] = '\0';
 
-        double *num = malloc(sizeof(double));
+        double *d = malloc(sizeof(double));
 
-        *num = strtod(num, NULL);
+        *d = strtod(num, NULL);
 
-        add_token(NUMBER, num);
+        add_token(NUMBER, d);
 }
 
 void add_string() {
@@ -380,5 +395,5 @@ void tokenize(char *src) {
                 advance();
         }
 
-        add_token(EOF, NULL);
+        add_token(END, NULL);
 }

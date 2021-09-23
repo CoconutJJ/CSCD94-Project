@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "tokentype.h"
-int hasError = 0;
-
 
 void report(int line, char * where, char * message) {
         fprintf(stderr, "[line ");
@@ -11,8 +9,6 @@ void report(int line, char * where, char * message) {
         fprintf(stderr, where);
         fprintf(stderr, ": ");
         fprintf(stderr, message);
-
-        hasError = 1;
 
 }
 void error(int line, char * message) {

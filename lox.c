@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "error.h"
-
+int hasError = 0;
 void run(char *source) {}
 
 void run_file(char *path) {
@@ -40,10 +40,10 @@ void run_prompt() {
 
 
 int main(int argc, char **argv) {
-        if (argc > 1) {
+        if (argc > 2) {
                 fprintf(stderr, "Usage: clox [script]");
                 exit(EXIT_FAILURE);
-        } else if (argc == 1) {
+        } else if (argc == 2) {
                 run_file(argv[1]);
         } else {
                 run_prompt();

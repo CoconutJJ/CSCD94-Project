@@ -1,3 +1,5 @@
+#ifndef TOKEN_TYPE_H
+#define TOKEN_TYPE_H
 enum TokenType {
         LEFT_PAREN,
         RIGHT_PAREN,
@@ -41,8 +43,7 @@ enum TokenType {
         VAR,
         WHILE,
         ASYNC,
-
-        EOF
+        END
 };
 
 struct Token {
@@ -52,3 +53,4 @@ struct Token {
         enum TokenType type;
         int line;
 };
+#endif

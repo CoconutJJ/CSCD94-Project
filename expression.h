@@ -1,18 +1,16 @@
-#include "tokentype.h"
+#ifndef EXPRESSION_H
+#define EXPRESSION_H
 #include <stdbool.h>
+
+#include "tokentype.h"
 enum ExprType {
 
         BINARY,
         UNARY,
         LITERAL,
-        GROUPING
-};
-
-enum ValueType {
-        NUM,
-        STR,
-        BOOL,
-        NIL
+        GROUPING,
+        VARIABLE,
+        ASSIGNMENT
 };
 
 struct Expr {
@@ -42,11 +40,22 @@ struct ExprGrouping {
         struct Expr* child;
 };
 
+struct ExprVariable {
+        struct Expr obj;
+        struct Token* name;
+};
+
+struct ExprAssignment {
+        struct Expr obj;
+        struct Token* name;
+        struct Expr* value;
+};
+
 struct Value {
         enum TokenType type;
         union {
                 double d;
-                char * s;
+                char* s;
                 bool b;
         };
 };
@@ -54,3 +63,4 @@ struct Value {
 // struct ExprCall {
 
 // }
+#endif
