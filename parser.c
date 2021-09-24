@@ -1,20 +1,26 @@
 #include <stdlib.h>
 
+#include "error.h"
 #include "expression.h"
 #include "statement.h"
 #include "tokentype.h"
-#include "error.h"
 struct Token* head = NULL;
 struct Token* current = NULL;
 struct Token* prev = NULL;
 
 struct Expr* parse_equality();
+struct Statement* parse_statement();
 
 static struct Token* peek() { return current; }
 
 static struct Token* previous() { return prev; }
 
 static int is_at_end() { return peek()->type == END; }
+
+void init_parser(struct Token * h) {
+        head = h;
+        current = h;
+}
 
 static struct Token* advance() {
         if (!is_at_end()) {
@@ -42,7 +48,10 @@ static struct Token* consume(enum TokenType type) {
         if (check(type)) {
                 return advance();
         }
+        return NULL;
 }
+
+
 
 struct ExprBin* make_expr_binary() {
         struct ExprBin* bin = malloc(sizeof(struct ExprBin));
@@ -83,6 +92,16 @@ struct ExprLiteral* make_expr_literal(struct Token* token) {
         return lit;
 }
 
+struct ExprLogical* make_expr_logical() {
+        struct ExprLogical* logical = malloc(sizeof(struct ExprLogical));
+
+        logical->obj.type = LOGICAL;
+        logical->left = NULL;
+        logical->right = NULL;
+        logical->token = NULL;
+
+        return logical;
+}
 struct ExprVariable* make_expr_variable(struct Token* name) {
         struct ExprVariable* var = malloc(sizeof(struct ExprVariable));
 
@@ -106,11 +125,11 @@ struct ExprAssignment* make_expr_assignment(struct Token* name,
 struct Expr* parse_primary() {
         if (match(FALSE) || match(TRUE) || match(NIL) || match(NUMBER) ||
             match(STRING)) {
-                return make_expr_literal(previous());
+                return (struct Expr*)make_expr_literal(previous());
         }
 
         if (match(IDENTIFIER)) {
-                return make_expr_variable(previous());
+                return (struct Expr*)make_expr_variable(previous());
         }
 
         if (match(LEFT_PAREN)) {
@@ -118,8 +137,10 @@ struct Expr* parse_primary() {
                 group->child = parse_equality();
                 consume(RIGHT_PAREN);
 
-                return group;
+                return (struct Expr*)group;
         }
+
+        return NULL;
 }
 
 struct Expr* parse_unary() {
@@ -132,7 +153,7 @@ struct Expr* parse_unary() {
                 root->child = child;
                 root->token = op;
 
-                return root;
+                return (struct Expr*)root;
         }
 
         return parse_primary();
@@ -215,8 +236,40 @@ struct Expr* parse_equality() {
         return left;
 }
 
+struct Expr* parse_and() {
+        struct Expr* left = parse_equality();
+
+        while (match(AND)) {
+                struct Token* op = previous();
+                struct Expr* right = parse_equality();
+                struct ExprLogical* root = make_expr_logical();
+                root->left = left;
+                root->token = op;
+                root->right = right;
+                left = (struct Expr*)root;
+        }
+
+        return left;
+}
+
+struct Expr* parse_or() {
+        struct Expr* left = parse_and();
+
+        while (match(OR)) {
+                struct Token* op = previous();
+                struct Expr* right = parse_and();
+                struct ExprLogical* root = make_expr_logical();
+                root->left = left;
+                root->token = op;
+                root->right = right;
+                left = (struct Expr*)root;
+        }
+
+        return left;
+}
+
 struct Expr* parse_assignment() {
-        struct Expr* expr = parse_equality();
+        struct Expr* expr = parse_or();
         if (match(EQUAL)) {
                 struct Token* equals = previous();
                 struct Expr* value = parse_assignment();
@@ -224,7 +277,7 @@ struct Expr* parse_assignment() {
                 if (expr->type == VARIABLE) {
                         struct Token* name = ((struct ExprVariable*)expr)->name;
 
-                        return make_expr_assignment(name, value);
+                        return (struct Expr*)make_expr_assignment(name, value);
                 }
 
                 error(equals->line, "Invalid Assignment target!");
@@ -269,6 +322,28 @@ struct VariableStatement* make_variable_statement(struct Token* name,
         return v;
 }
 
+struct BlockStatement* make_block_statement(struct Statement* stmts) {
+        struct BlockStatement* b = malloc(sizeof(struct BlockStatement));
+
+        b->obj.type = S_BLK;
+        b->obj.next = NULL;
+        b->stmts = stmts;
+
+        return b;
+}
+
+struct IfStatement* make_if_statement() {
+        struct IfStatement* s = malloc(sizeof(struct IfStatement));
+
+        s->obj.type = S_IF;
+        s->obj.next = NULL;
+        s->condition = NULL;
+        s->thenBranch = NULL;
+        s->elseBranch = NULL;
+
+        return s;
+}
+
 struct PrintStatement* parse_print_statement() {
         struct Expr* value = parse_equality();
 
@@ -278,9 +353,27 @@ struct PrintStatement* parse_print_statement() {
 }
 
 struct ExpressionStatement* parse_expression_statement() {
-        struct Expr* value = parse_equality();
+        struct Expr* value = parse_expression();
         consume(SEMICOLON);
         return make_expression_statement(value);
+}
+
+struct Statement* parse_block_statement() {
+        struct Statement* stmts = NULL;
+        struct Statement* end = NULL;
+        while (!check(RIGHT_BRACE) && !is_at_end()) {
+                if (!stmts) {
+                        stmts = parse_statement();
+                        end = stmts;
+                } else {
+                        end->next = parse_statement();
+                        end = end->next;
+                }
+        }
+
+        consume(RIGHT_BRACE);
+
+        return stmts;
 }
 
 struct VariableStatement* parse_variable_statement() {
@@ -296,17 +389,37 @@ struct VariableStatement* parse_variable_statement() {
         return make_variable_statement(name, value);
 }
 
+struct IfStatement* parse_if_statement() {
+        struct IfStatement* new_if = make_if_statement();
+
+        consume(LEFT_PAREN);
+        new_if->condition = parse_expression();
+        consume(RIGHT_PAREN);
+
+        new_if->thenBranch = parse_statement();
+
+        if (match(ELSE)) {
+                new_if->elseBranch = parse_statement();
+        }
+
+        return new_if;
+}
+
 struct Statement* parse_statement() {
+        if (match(IF)) return NULL;
+        if (match(PRINT)) return (struct Statement*)parse_print_statement();
+        if (match(VAR)) return (struct Statement*)parse_variable_statement();
+        if (match(LEFT_BRACE))
+                return (struct Statement*)make_block_statement(parse_block_statement());
+
+        return (struct Statement*)parse_expression_statement();
+}
+
+struct Statement* parse() {
         struct Statement* list = NULL;
         struct Statement* end = NULL;
-        struct Statement* curr = NULL;
         while (!is_at_end()) {
-                if (match(PRINT))
-                        curr = parse_print_statement();
-                else if (match(VAR))
-                        curr = parse_variable_statement();
-                else {
-                }
+                struct Statement* curr = parse_statement();
 
                 if (!list) {
                         list = curr;
@@ -316,6 +429,5 @@ struct Statement* parse_statement() {
                         end = end->next;
                 }
         }
-
-        return parse_expression_statement();
+        return list;
 }

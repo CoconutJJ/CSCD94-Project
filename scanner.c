@@ -1,4 +1,4 @@
-
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -49,6 +49,9 @@ struct Token *make_token(enum TokenType token) {
 
         t->type = token;
         t->next = NULL;
+        t->lexeme = NULL;
+        t->line = -1;
+        t->literal = NULL;
 
         return t;
 }
@@ -311,7 +314,7 @@ void init(char *src) {
         end = NULL;
 }
 
-void tokenize(char *src) {
+struct Token * tokenize(char *src) {
         init(src);
 
         char c;
@@ -390,10 +393,13 @@ void tokenize(char *src) {
                                 continue;
                         } else {
                                 error(line, "Unexpected character");
+                                printf("%c", peek());
                         }
                 }
                 advance();
         }
 
         add_token(END, NULL);
+
+        return head;
 }

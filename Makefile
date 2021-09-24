@@ -1,7 +1,10 @@
 GCC=gcc -g -Wall
 
-all: lox.c hashtable.o interpreter.o scanner.o parser.o error.o
-	$(GCC) lox.c hashtable.o interpreter.o scanner.o parser.o error.o -o lox
+all: lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o
+	$(GCC) lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o -o lox
+
+environment.o: environment.c  
+	$(GCC) -c environment.c -o environment.o
 
 hashtable.o: hashtable/hash_table.c
 	$(GCC) -c hashtable/hash_table.c -o hashtable.o

@@ -4,6 +4,7 @@
 #include "./hashtable/hash_table.h"
 
 struct Environment {
+        struct Environment * enclosing;
         struct hashtable * values;
 };
 

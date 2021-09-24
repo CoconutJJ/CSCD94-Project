@@ -9,6 +9,7 @@ void report(int line, char * where, char * message) {
         fprintf(stderr, where);
         fprintf(stderr, ": ");
         fprintf(stderr, message);
+        fprintf(stderr, "\n");
 
 }
 void error(int line, char * message) {

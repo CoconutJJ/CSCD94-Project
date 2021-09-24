@@ -1,8 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "error.h"
+#include "statement.h"
 int hasError = 0;
-void run(char *source) {}
+extern struct Token * tokenize(char *src);
+extern void init_parser(struct Token * head);
+extern struct Statement* parse();
+
+void run(char *source) {
+
+        struct Token * head = tokenize(source);
+        init_parser(head);
+        struct Statement * p = parse();
+        printf("%p", p);
+}
 
 void run_file(char *path) {
         FILE *fp = fopen(path, "r");
@@ -13,13 +24,15 @@ void run_file(char *path) {
 
         fseek(fp, 0, SEEK_SET);
 
-        char *source = malloc(fileSize * sizeof(char));
+        char *source = malloc((fileSize + 1) * sizeof(char));
 
         fread(source, fileSize, 1, fp);
 
         fclose(fp);
+        source[fileSize] = '\0';
 
         run(source);
+
 
         if (hasError) exit(EXIT_FAILURE);
 

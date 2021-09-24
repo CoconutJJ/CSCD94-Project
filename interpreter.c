@@ -8,10 +8,10 @@
 #include "expression.h"
 #include "statement.h"
 
-struct Environment env;
+struct Environment * env;
 
 struct Value* evaluate_expr(struct Expr* expr);
-
+void execute(struct Statement* stmt);
 struct Value* make_value(enum TokenType value) {
         struct Value* v = malloc(sizeof(struct Value));
         v->type = value;
@@ -91,6 +91,18 @@ struct Value* visit_literal(struct ExprLiteral* literal) {
         return v;
 }
 
+struct Value * visit_logical(struct ExprLogical * logical) {
+        struct Value * left = evaluate_expr(logical->left);
+
+        if (logical->token->type == OR) {
+                if (is_truthy(left)) return left;
+        } else {
+                if (!is_truthy(left)) return left;
+        }
+
+        return evaluate_expr(logical->right);
+}
+
 struct Value* visit_grouping(struct ExprGrouping* group) {
         struct Value* v = evaluate_expr(group->child);
 
@@ -118,7 +130,7 @@ struct Value* visit_unary(struct ExprUnr* unary) {
 }
 
 struct Value* visit_variable(struct ExprVariable* variable) {
-        return env_get(&env, variable->name);
+        return env_get(env, variable->name);
 }
 
 struct Value* visit_binary(struct ExprBin* binary) {
@@ -182,7 +194,7 @@ struct Value* visit_binary(struct ExprBin* binary) {
                 v->b = b;
                 break;
         case EQUAL_EQUAL:
-                b = !is_equal(l, r);
+                b = is_equal(l, r);
                 v = make_value(b ? TRUE : FALSE);
                 v->b = b;
                 break;
@@ -210,6 +222,7 @@ struct Value* evaluate_expr(struct Expr* expr) {
         default:
                 break;
         }
+        return NULL;
 }
 
 void visit_expression_stmt(struct ExpressionStatement* stmt) {
@@ -247,13 +260,36 @@ void visit_variable_stmt(struct VariableStatement* stmt) {
         if (stmt->value) {
                 v = evaluate_expr(stmt->value);
         }
-        env_define(&env, stmt->name->lexeme, v);
+        env_define(env, stmt->name->lexeme, v);
         free(v);
+}
+
+void execute_block(struct Statement * stmts, struct Environment * e) {
+        struct Environment * previous = env;
+
+        env = e;
+
+        while (stmts != NULL) {
+                execute(stmts);
+                stmts = stmts->next;
+        }
+
+        env = previous;
+}
+
+void visit_block_stmt(struct BlockStatement * blk) {
+
+        struct Environment * e = make_env();
+
+        e->enclosing = env;
+
+        execute_block(blk->stmts, e);
 }
 
 void execute(struct Statement* stmt) {}
 
 void interpret(struct Statement* stmts) {
+        env = make_env();
         for (; stmts != NULL; stmts = stmts->next) {
                 execute(stmts);
         }

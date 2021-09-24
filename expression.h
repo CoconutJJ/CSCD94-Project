@@ -10,7 +10,8 @@ enum ExprType {
         LITERAL,
         GROUPING,
         VARIABLE,
-        ASSIGNMENT
+        ASSIGNMENT,
+        LOGICAL
 };
 
 struct Expr {
@@ -33,6 +34,13 @@ struct ExprUnr {
 struct ExprLiteral {
         struct Expr obj;
         struct Token* token;
+};
+
+struct ExprLogical {
+        struct Expr obj;
+        struct Token* token;
+        struct Expr* left;
+        struct Expr* right;
 };
 
 struct ExprGrouping {
