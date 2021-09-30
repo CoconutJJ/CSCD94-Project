@@ -10,6 +10,7 @@ struct Token* prev = NULL;
 
 struct Expr* parse_equality();
 struct Statement* parse_statement();
+struct Expr* parse_expression();
 
 static struct Token* peek() { return current; }
 
@@ -17,7 +18,7 @@ static struct Token* previous() { return prev; }
 
 static int is_at_end() { return peek()->type == END; }
 
-void init_parser(struct Token * h) {
+void init_parser(struct Token* h) {
         head = h;
         current = h;
 }
@@ -50,8 +51,6 @@ static struct Token* consume(enum TokenType type) {
         }
         return NULL;
 }
-
-
 
 struct ExprBin* make_expr_binary() {
         struct ExprBin* bin = malloc(sizeof(struct ExprBin));
@@ -122,6 +121,17 @@ struct ExprAssignment* make_expr_assignment(struct Token* name,
         return ass;
 }
 
+struct ExprCall* make_expr_call() {
+        struct ExprCall* call = malloc(sizeof(struct ExprCall));
+        call->arguments = NULL;
+        call->callee = NULL;
+        call->paren = NULL;
+        call->obj.type = CALL;
+        call->obj.next = NULL;
+
+        return call;
+}
+
 struct Expr* parse_primary() {
         if (match(FALSE) || match(TRUE) || match(NIL) || match(NUMBER) ||
             match(STRING)) {
@@ -141,6 +151,56 @@ struct Expr* parse_primary() {
         }
 
         return NULL;
+}
+
+struct Expr* finish_call(struct Expr* expr) {
+        struct Expr* head = NULL;
+        struct Expr* curr = NULL;
+
+        int arg_count = 0;
+
+        if (!check(RIGHT_PAREN)) {
+                do {
+                        if (!curr) {
+                                curr = parse_expression();
+                                head = curr;
+                        } else {
+                                curr->next = parse_expression();
+                                curr = curr->next;
+                        }
+
+                        arg_count++;
+
+                        if (arg_count >= 255) {
+                                error(peek()->line,
+                                      "Can't have more than 255 arguments");
+                        }
+
+                } while (match(COMMA));
+        }
+
+        struct Token* paren = consume(RIGHT_PAREN);
+
+        struct ExprCall* call = make_expr_call();
+
+        call->arguments = head;
+        call->callee = expr;
+        call->paren = paren;
+
+        return (struct Expr*)call;
+}
+struct Expr* parse_call() {
+        struct Expr* expr = parse_primary();
+
+        while (1) {
+                if (match(LEFT_PAREN)) {
+                        expr = finish_call(expr);
+                } else {
+                        break;
+                }
+        }
+
+        return expr;
 }
 
 struct Expr* parse_unary() {
@@ -344,6 +404,40 @@ struct IfStatement* make_if_statement() {
         return s;
 }
 
+struct WhileStatement* make_while_statement() {
+        struct WhileStatement* w = malloc(sizeof(struct WhileStatement));
+
+        w->obj.type = S_WHILE;
+        w->obj.next = NULL;
+        w->condition = NULL;
+        w->body = NULL;
+
+        return w;
+}
+
+struct FunctionStatement* make_function_statement() {
+        struct FunctionStatement* f = malloc(sizeof(struct FunctionStatement));
+
+        f->obj.type = S_FUN;
+        f->obj.next = NULL;
+        f->name = NULL;
+        f->body = NULL;
+        f->params = NULL;
+
+        return f;
+}
+
+struct ReturnStatement* make_return_statement() {
+        struct ReturnStatement* r = malloc(sizeof(struct ReturnStatement));
+
+        r->obj.type = S_RET;
+        r->obj.next = NULL;
+        r->keyword = NULL;
+        r->value = NULL;
+
+        return r;
+}
+
 struct PrintStatement* parse_print_statement() {
         struct Expr* value = parse_equality();
 
@@ -405,12 +499,88 @@ struct IfStatement* parse_if_statement() {
         return new_if;
 }
 
+struct WhileStatement* parse_while_statement() {
+        struct WhileStatement* new_while = make_while_statement();
+
+        consume(LEFT_PAREN);
+
+        new_while->condition = parse_expression();
+
+        consume(RIGHT_PAREN);
+
+        new_while->body = parse_statement();
+
+        return new_while;
+}
+
+struct Statement* parse_function(char* kind) {
+        struct Token* name = consume(IDENTIFIER);
+
+        consume(LEFT_PAREN);
+
+        struct Token* head = NULL;
+        struct Token* curr = NULL;
+        int arg_count = 0;
+        if (!check(RIGHT_PAREN)) {
+                do {
+                        if (!curr) {
+                                curr = consume(IDENTIFIER);
+                                head = curr;
+                        } else {
+                                curr->next = consume(IDENTIFIER);
+                                curr = curr->next;
+                        }
+
+                        arg_count++;
+
+                        if (arg_count >= 255) {
+                                error(peek()->line,
+                                      "Can't have more than 255 parameters.");
+                        }
+
+                } while (match(COMMA));
+        }
+
+        consume(RIGHT_PAREN);
+
+        struct Statement* block = parse_block_statement();
+
+        struct FunctionStatement* f = make_function_statement();
+
+        f->body = block;
+        f->name = name;
+        f->params = head;
+        f->arity = arg_count;
+
+        return (struct Statement *)f;
+}
+
+struct Statement* parse_return_statement() {
+        struct Token* keyword = previous();
+
+        struct Expr* value = NULL;
+        if (!check(SEMICOLON)) {
+                value = parse_expression();
+        }
+        consume(SEMICOLON);
+
+        struct ReturnStatement* r = make_return_statement();
+
+        r->keyword = keyword;
+        r->value = value;
+
+        return (struct Statement *)r;
+}
+
 struct Statement* parse_statement() {
-        if (match(IF)) return NULL;
+        if (match(IF)) return (struct Statement*)parse_if_statement();
         if (match(PRINT)) return (struct Statement*)parse_print_statement();
+        if (match(RETURN)) return (struct Statement*)parse_return_statement();
+        if (match(FUN)) return (struct Statement*)parse_function("function");
         if (match(VAR)) return (struct Statement*)parse_variable_statement();
         if (match(LEFT_BRACE))
-                return (struct Statement*)make_block_statement(parse_block_statement());
+                return (struct Statement*)make_block_statement(
+                    parse_block_statement());
 
         return (struct Statement*)parse_expression_statement();
 }

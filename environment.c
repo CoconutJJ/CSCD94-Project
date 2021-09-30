@@ -45,3 +45,12 @@ void env_assign(struct Environment* env, struct Token * name, struct Value * v) 
     runtime_error(name, "Undefined Variable");
 
 }
+
+struct Environment * new_env(struct Environment * env) {
+
+        struct Environment * new = make_env();
+
+        new->enclosing = env;
+
+        return new;
+}

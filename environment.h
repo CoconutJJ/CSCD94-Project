@@ -8,4 +8,6 @@
 struct Environment* make_env();
 void env_define(struct Environment* env, char* name, struct Value* v);
 struct Value *env_get(struct Environment* env, struct Token* name);
+void env_assign(struct Environment* env, struct Token * name, struct Value * v);
+struct Environment * new_env(struct Environment * env);
 #endif

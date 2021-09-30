@@ -11,11 +11,13 @@ enum ExprType {
         GROUPING,
         VARIABLE,
         ASSIGNMENT,
+        CALL,
         LOGICAL
 };
 
 struct Expr {
         enum ExprType type;
+        struct Expr * next;
 };
 
 struct ExprBin {
@@ -29,6 +31,13 @@ struct ExprUnr {
         struct Expr obj;
         struct Token* token;
         struct Expr* child;
+};
+
+struct ExprCall {
+        struct Expr obj;
+        struct Expr * callee;
+        struct Token * paren;
+        struct Expr * arguments;
 };
 
 struct ExprLiteral {
@@ -65,7 +74,12 @@ struct Value {
                 double d;
                 char* s;
                 bool b;
+                struct {
+                        struct FunctionStatement * declaration;
+                };
         };
+
+        struct Value * next;
 };
 
 // struct ExprCall {

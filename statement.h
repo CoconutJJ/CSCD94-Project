@@ -4,7 +4,7 @@
 #include "expression.h"
 #include "tokentype.h"
 
-enum StatementType { S_PRINT, S_IF, S_WHILE, S_FOR, S_EXPR, S_VAR, S_BLK };
+enum StatementType { S_PRINT, S_IF, S_WHILE, S_FOR, S_EXPR, S_VAR, S_BLK, S_FUN, S_RET };
 
 struct Statement {
         enum StatementType type;
@@ -42,11 +42,25 @@ struct IfStatement {
 struct WhileStatement {
         struct Statement obj;
         struct Expr* condition;
-        struct Statment* body;
+        struct Statement* body;
 };
 
 struct ForStatement {
 
+};
+
+struct FunctionStatement {
+        struct Statement obj;
+        struct Token * name;
+        struct Token * params;
+        int arity;
+        struct Statement * body;
+};
+
+struct ReturnStatement {
+        struct Statement obj;
+        struct Token * keyword;
+        struct Expr * value;
 };
 
 

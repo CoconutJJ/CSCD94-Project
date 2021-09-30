@@ -6,9 +6,9 @@
 #include "environment_types.h"
 #include "error.h"
 #include "expression.h"
+#include "loxfunction.h"
 #include "statement.h"
-
-struct Environment * env;
+struct Environment* env;
 
 struct Value* evaluate_expr(struct Expr* expr);
 void execute(struct Statement* stmt);
@@ -91,8 +91,8 @@ struct Value* visit_literal(struct ExprLiteral* literal) {
         return v;
 }
 
-struct Value * visit_logical(struct ExprLogical * logical) {
-        struct Value * left = evaluate_expr(logical->left);
+struct Value* visit_logical(struct ExprLogical* logical) {
+        struct Value* left = evaluate_expr(logical->left);
 
         if (logical->token->type == OR) {
                 if (is_truthy(left)) return left;
@@ -128,7 +128,6 @@ struct Value* visit_unary(struct ExprUnr* unary) {
         }
         return v;
 }
-
 struct Value* visit_variable(struct ExprVariable* variable) {
         return env_get(env, variable->name);
 }
@@ -206,7 +205,45 @@ struct Value* visit_binary(struct ExprBin* binary) {
         free(r);
 
         return v;
+}
 
+struct Value* visit_call_expr(struct ExprCall* expr) {
+        struct Value* callee = evaluate_expr(expr->callee);
+
+        struct Expr* arguments = expr->arguments;
+        struct Value* head = NULL;
+        struct Value* curr = NULL;
+        int arg_count = 0;
+        while (arguments != NULL) {
+                if (!curr) {
+                        curr = evaluate_expr(arguments);
+                        head = curr;
+                } else {
+                        curr->next = evaluate_expr(arguments);
+                        curr = curr->next;
+                        arguments = arguments->next;
+                }
+                arg_count++;
+        }
+
+        if (callee->type != FUN) {
+                runtime_error(expr->paren,
+                              "Can only call functions and classes");
+        }
+
+        if (callee->declaration->arity != arg_count) {
+                runtime_error(
+                    expr->paren,
+                    "Function call invoked with incorrect number of arguments");
+        }
+
+        return function_call(env, callee, head);
+}
+
+struct Value* visit_assignment(struct ExprAssignment* stmt) {
+        struct Value* v = evaluate_expr(stmt->value);
+        env_assign(env, stmt->name, v);
+        return v;
 }
 
 struct Value* evaluate_expr(struct Expr* expr) {
@@ -219,6 +256,14 @@ struct Value* evaluate_expr(struct Expr* expr) {
                 return visit_literal((struct ExprLiteral*)expr);
         case GROUPING:
                 return visit_grouping((struct ExprGrouping*)expr);
+        case VARIABLE:
+                return visit_variable((struct ExprVariable*)expr);
+        case ASSIGNMENT:
+                return visit_assignment((struct ExprAssignment*)expr);
+        case CALL:
+                return visit_call_expr((struct ExprCall*)expr);
+        case LOGICAL:
+                return visit_logical((struct ExprLogical*)expr);
         default:
                 break;
         }
@@ -227,6 +272,26 @@ struct Value* evaluate_expr(struct Expr* expr) {
 
 void visit_expression_stmt(struct ExpressionStatement* stmt) {
         evaluate_expr(stmt->expr);
+}
+
+void visit_if_stmt(struct IfStatement* stmt) {
+        if (is_truthy(evaluate_expr(stmt->condition))) {
+                execute(stmt->thenBranch);
+        } else if (stmt->elseBranch != NULL) {
+                execute(stmt->elseBranch);
+        }
+}
+
+void visit_while_stmt(struct WhileStatement* stmt) {
+        while (is_truthy(evaluate_expr(stmt->condition))) {
+                execute((struct Statement*)stmt->body);
+        }
+}
+
+void visit_function_stmt(struct FunctionStatement* stmt) {
+        struct Value* f = make_value(FUN);
+        f->declaration = stmt;
+        env_define(env, stmt->name->lexeme, f);
 }
 
 void visit_print_stmt(struct PrintStatement* stmt) {
@@ -255,7 +320,7 @@ void visit_print_stmt(struct PrintStatement* stmt) {
         free(v);
 }
 
-void visit_variable_stmt(struct VariableStatement* stmt) {
+void visit_declaration_stmt(struct VariableStatement* stmt) {
         struct Value* v = NULL;
         if (stmt->value) {
                 v = evaluate_expr(stmt->value);
@@ -264,8 +329,8 @@ void visit_variable_stmt(struct VariableStatement* stmt) {
         free(v);
 }
 
-void execute_block(struct Statement * stmts, struct Environment * e) {
-        struct Environment * previous = env;
+void execute_block(struct Statement* stmts, struct Environment* e) {
+        struct Environment* previous = env;
 
         env = e;
 
@@ -277,16 +342,41 @@ void execute_block(struct Statement * stmts, struct Environment * e) {
         env = previous;
 }
 
-void visit_block_stmt(struct BlockStatement * blk) {
-
-        struct Environment * e = make_env();
+void visit_block_stmt(struct BlockStatement* blk) {
+        struct Environment* e = make_env();
 
         e->enclosing = env;
 
         execute_block(blk->stmts, e);
 }
 
-void execute(struct Statement* stmt) {}
+void execute(struct Statement* stmt) {
+        switch (stmt->type) {
+        case S_BLK:
+                visit_block_stmt((struct BlockStatement*)stmt);
+                break;
+        case S_FUN:
+                visit_function_stmt((struct FunctionStatement*)stmt);
+                break;
+        case S_IF:
+                visit_if_stmt((struct IfStatement*)stmt);
+                break;
+        case S_PRINT:
+                visit_print_stmt((struct PrintStatement*)stmt);
+                break;
+        case S_VAR:
+                visit_declaration_stmt((struct VariableStatement*)stmt);
+                break;
+        case S_EXPR:
+                visit_expression_stmt((struct ExpressionStatement*)stmt);
+                break;
+        case S_WHILE:
+                visit_while_stmt((struct WhileStatement*)stmt);
+                break;
+        default:
+                break;
+        }
+}
 
 void interpret(struct Statement* stmts) {
         env = make_env();

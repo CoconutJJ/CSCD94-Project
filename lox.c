@@ -1,18 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "error.h"
+#include "interpreter.h"
 #include "statement.h"
+
 int hasError = 0;
-extern struct Token * tokenize(char *src);
-extern void init_parser(struct Token * head);
-extern struct Statement* parse();
+extern struct Token *tokenize(char *src);
+extern void init_parser(struct Token *head);
+extern struct Statement *parse();
 
 void run(char *source) {
-
-        struct Token * head = tokenize(source);
+        struct Token *head = tokenize(source);
         init_parser(head);
-        struct Statement * p = parse();
-        printf("%p", p);
+        struct Statement *p = parse();
+        interpret(p);
 }
 
 void run_file(char *path) {
@@ -33,9 +35,7 @@ void run_file(char *path) {
 
         run(source);
 
-
         if (hasError) exit(EXIT_FAILURE);
-
 }
 
 void run_prompt() {
@@ -49,8 +49,6 @@ void run_prompt() {
                 hasError = 0;
         }
 }
-
-
 
 int main(int argc, char **argv) {
         if (argc > 2) {
