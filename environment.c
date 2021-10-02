@@ -17,12 +17,19 @@ void env_define(struct Environment* env, char* name, struct Value* v) {
         hashtable_set(env->values, name, v, sizeof(struct Value));
 }
 
-struct Value * env_get(struct Environment* env, struct Token* name) {
+struct Value* env_get(struct Environment* env, struct Token* name) {
         if (hashtable_has(env->values, name->lexeme)) {
-                return hashtable_get(env->values, name->lexeme);
+                struct Value* v = hashtable_get(env->values, name->lexeme);
+
+                // preserve hashtable entries, make a copy of data.
+                struct Value * new_v = malloc(sizeof(struct Value));
+
+                *new_v = *v;
+
+                return new_v;
         }
 
-        if (env->enclosing != NULL)  {
+        if (env->enclosing != NULL) {
                 return env_get(env->enclosing, name);
         }
 
@@ -30,27 +37,30 @@ struct Value * env_get(struct Environment* env, struct Token* name) {
         return NULL;
 }
 
-void env_assign(struct Environment* env, struct Token * name, struct Value * v) {
+void env_assign(struct Environment* env, struct Token* name, struct Value* v) {
+        if (hashtable_has(env->values, name->lexeme)) {
+                hashtable_set(env->values, name->lexeme, v,
+                              sizeof(struct Value));
+                return;
+        }
 
-    if (hashtable_has(env->values, name->lexeme)) {
-        hashtable_set(env->values, name->lexeme, v, sizeof(struct Value));
-        return;
-    }
+        if (env->enclosing != NULL) {
+                env_assign(env->enclosing, name, v);
+                return;
+        }
 
-    if (env->enclosing != NULL) {
-            env_assign(env->enclosing, name, v);
-            return;
-    }
-
-    runtime_error(name, "Undefined Variable");
-
+        runtime_error(name, "Undefined Variable");
 }
 
-struct Environment * new_env(struct Environment * env) {
-
-        struct Environment * new = make_env();
+struct Environment* new_env(struct Environment* env) {
+        struct Environment* new = make_env();
 
         new->enclosing = env;
 
         return new;
+}
+
+void destroy_env(struct Environment* env) {
+        hashtable_destroy(env->values);
+        free(env);
 }

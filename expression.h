@@ -17,7 +17,7 @@ enum ExprType {
 
 struct Expr {
         enum ExprType type;
-        struct Expr * next;
+        struct Expr* next;
 };
 
 struct ExprBin {
@@ -35,9 +35,9 @@ struct ExprUnr {
 
 struct ExprCall {
         struct Expr obj;
-        struct Expr * callee;
-        struct Token * paren;
-        struct Expr * arguments;
+        struct Expr* callee;
+        struct Token* paren;
+        struct Expr* arguments;
 };
 
 struct ExprLiteral {
@@ -69,20 +69,15 @@ struct ExprAssignment {
 };
 
 struct Value {
-        enum TokenType type;
+        struct Value* next;
         union {
                 double d;
                 char* s;
                 bool b;
                 struct {
-                        struct FunctionStatement * declaration;
+                        struct FunctionStatement* declaration;
                 };
         };
-
-        struct Value * next;
+        enum TokenType type;
 };
-
-// struct ExprCall {
-
-// }
 #endif

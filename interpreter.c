@@ -237,7 +237,12 @@ struct Value* visit_call_expr(struct ExprCall* expr) {
                     "Function call invoked with incorrect number of arguments");
         }
 
-        return function_call(env, callee, head);
+        struct Value * ret = function_call(env, callee, head);
+
+        free(callee);
+
+        return ret;
+
 }
 
 struct Value* visit_assignment(struct ExprAssignment* stmt) {
@@ -267,11 +272,14 @@ struct Value* evaluate_expr(struct Expr* expr) {
         default:
                 break;
         }
+
         return NULL;
 }
 
 void visit_expression_stmt(struct ExpressionStatement* stmt) {
-        evaluate_expr(stmt->expr);
+        struct Value* v = evaluate_expr(stmt->expr);
+
+        if (v) free(v);
 }
 
 void visit_if_stmt(struct IfStatement* stmt) {
@@ -343,11 +351,11 @@ void execute_block(struct Statement* stmts, struct Environment* e) {
 }
 
 void visit_block_stmt(struct BlockStatement* blk) {
-        struct Environment* e = make_env();
-
-        e->enclosing = env;
+        struct Environment* e = new_env(env);
 
         execute_block(blk->stmts, e);
+
+        destroy_env(e);
 }
 
 void execute(struct Statement* stmt) {
@@ -383,4 +391,5 @@ void interpret(struct Statement* stmts) {
         for (; stmts != NULL; stmts = stmts->next) {
                 execute(stmts);
         }
+        free(env);
 }

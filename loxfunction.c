@@ -21,6 +21,8 @@ struct Value* function_call(struct Environment* env, struct Value* callee,
 
         execute_block(callee->declaration->body, e);
 
+        destroy_env(e);
+
         return NULL;
 
 }
