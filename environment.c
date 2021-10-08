@@ -22,7 +22,7 @@ struct Value* env_get(struct Environment* env, struct Token* name) {
                 struct Value* v = hashtable_get(env->values, name->lexeme);
 
                 // preserve hashtable entries, make a copy of data.
-                struct Value * new_v = malloc(sizeof(struct Value));
+                struct Value* new_v = malloc(sizeof(struct Value));
 
                 *new_v = *v;
 
@@ -35,6 +35,25 @@ struct Value* env_get(struct Environment* env, struct Token* name) {
 
         runtime_error(name, "Undefined Variable");
         return NULL;
+}
+
+struct Environment* env_ancestor(struct Environment* env, int distance) {
+        while (distance > 0) {
+                env = env->enclosing;
+                distance--;
+        }
+
+        return env;
+}
+
+struct Value* env_get_at(struct Environment* env, int distance, char* name) {
+        return hashtable_get(env_ancestor(env, distance)->values, name);
+}
+
+void env_assign_at(struct Environment* env, int distance, struct Token* name,
+                   struct Value* v) {
+        hashtable_set(env_ancestor(env, distance)->values, name->lexeme, v,
+                      sizeof(struct Value));
 }
 
 void env_assign(struct Environment* env, struct Token* name, struct Value* v) {

@@ -76,6 +76,7 @@ struct Value {
                 bool b;
                 struct {
                         struct FunctionStatement* declaration;
+                        struct Environment * closure;
                 };
         };
         enum TokenType type;

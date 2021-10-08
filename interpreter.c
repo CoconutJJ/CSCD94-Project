@@ -8,10 +8,45 @@
 #include "expression.h"
 #include "loxfunction.h"
 #include "statement.h"
+
+struct Environment* global;
 struct Environment* env;
+struct Locals* locals;
 
 struct Value* evaluate_expr(struct Expr* expr);
 void execute(struct Statement* stmt);
+
+struct Locals * make_locals() {
+        struct Locals * l = malloc(sizeof(struct Locals));
+
+        l->h = hashtable_new();
+
+        return l;
+}
+
+int locals_get(struct Expr* expr) {
+        char name[8 + 1];
+        sprintf(name, "%p", expr);
+        name[8] = '\0';
+
+        int* dist = hashtable_get(locals->h, name);
+
+        if (!dist) {
+                return -1;
+        } else {
+                return *dist;
+        }
+}
+
+void locals_set(struct Expr* expr, int depth) {
+        char name[8 + 1];
+        sprintf(name, "%p", expr);
+        name[8] = '\0';
+
+        hashtable_set(locals->h, name, &depth, sizeof(int));
+
+}
+
 struct Value* make_value(enum TokenType value) {
         struct Value* v = malloc(sizeof(struct Value));
         v->type = value;
@@ -128,8 +163,20 @@ struct Value* visit_unary(struct ExprUnr* unary) {
         }
         return v;
 }
+
+struct Value* look_up_variable(struct Token* name, struct Expr* expr) {
+        int dist = locals_get(expr);
+
+        if (dist < 0) {
+                return env_get_at(env, dist, name->lexeme);
+        } else {
+                return env_get(global, name);
+        }
+}
+
 struct Value* visit_variable(struct ExprVariable* variable) {
-        return env_get(env, variable->name);
+        // return env_get(env, variable->name);
+        return look_up_variable(variable->name, (struct Expr*)variable);
 }
 
 struct Value* visit_binary(struct ExprBin* binary) {
@@ -237,17 +284,24 @@ struct Value* visit_call_expr(struct ExprCall* expr) {
                     "Function call invoked with incorrect number of arguments");
         }
 
-        struct Value * ret = function_call(env, callee, head);
+        struct Value* ret = function_call(global, callee, head);
 
         free(callee);
 
         return ret;
-
 }
 
 struct Value* visit_assignment(struct ExprAssignment* stmt) {
         struct Value* v = evaluate_expr(stmt->value);
-        env_assign(env, stmt->name, v);
+
+        int distance = locals_get((struct Expr*)stmt);
+
+        if (distance < 0) {
+                env_assign_at(env, distance, stmt->name, v);
+        } else {
+                env_assign(global, stmt->name, v);
+        }
+        // env_assign(env, stmt->name, v);
         return v;
 }
 
@@ -299,6 +353,7 @@ void visit_while_stmt(struct WhileStatement* stmt) {
 void visit_function_stmt(struct FunctionStatement* stmt) {
         struct Value* f = make_value(FUN);
         f->declaration = stmt;
+        f->closure = env;
         env_define(env, stmt->name->lexeme, f);
 }
 
@@ -386,8 +441,14 @@ void execute(struct Statement* stmt) {
         }
 }
 
+void interpreter_resolve(struct Expr* expr, int depth) { 
+        locals_set(expr, depth);
+}
+
 void interpret(struct Statement* stmts) {
         env = make_env();
+        global = env;
+        locals = make_locals();
         for (; stmts != NULL; stmts = stmts->next) {
                 execute(stmts);
         }
