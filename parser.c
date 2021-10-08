@@ -574,10 +574,12 @@ struct Statement* parse_return_statement() {
 
 struct Statement* parse_statement() {
         if (match(IF)) return (struct Statement*)parse_if_statement();
+        if (match(WHILE)) return (struct Statement*) parse_while_statement();
         if (match(PRINT)) return (struct Statement*)parse_print_statement();
         if (match(RETURN)) return (struct Statement*)parse_return_statement();
         if (match(FUN)) return (struct Statement*)parse_function("function");
         if (match(VAR)) return (struct Statement*)parse_variable_statement();
+
         if (match(LEFT_BRACE))
                 return (struct Statement*)make_block_statement(
                     parse_block_statement());

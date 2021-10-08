@@ -34,7 +34,7 @@ void scope_set(char* lexeme, int set) {
 int scope_get(char* lexeme) {
         int* state = hashtable_get(scopes->h, lexeme);
 
-        if (!state) return 0;
+        if (!state) return -1;
 
         return *state;
 }
@@ -58,10 +58,13 @@ void scope_begin() {
 }
 
 void scope_end() {
+        struct Scope* curr = scopes;
+
         scopes = scopes->prev;
 
-        destroy_scope(scopes->next);
-        scopes->next = NULL;
+        if (scopes) scopes->next = NULL;
+
+        destroy_scope(curr);
         scope_size--;
 }
 
@@ -101,6 +104,7 @@ void resolve_local(struct Expr* expr, struct Token* name) {
                         return;
                 }
                 i--;
+                curr = curr->prev;
         }
 }
 

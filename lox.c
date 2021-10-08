@@ -3,6 +3,7 @@
 
 #include "error.h"
 #include "interpreter.h"
+#include "resolver.h"
 #include "statement.h"
 
 int hasError = 0;
@@ -14,6 +15,8 @@ void run(char *source) {
         struct Token *head = tokenize(source);
         init_parser(head);
         struct Statement *p = parse();
+        locals_init();
+        resolve_statements(p);
         interpret(p);
 }
 

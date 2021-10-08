@@ -16,18 +16,22 @@ struct Locals* locals;
 struct Value* evaluate_expr(struct Expr* expr);
 void execute(struct Statement* stmt);
 
-struct Locals * make_locals() {
-        struct Locals * l = malloc(sizeof(struct Locals));
+struct Locals* make_locals() {
+        struct Locals* l = malloc(sizeof(struct Locals));
 
         l->h = hashtable_new();
 
         return l;
 }
 
+void obj_id(void* obj_addr, char id[17]) {
+        sprintf(id, "%p", obj_addr);
+        id[16] = '\0';
+}
+
 int locals_get(struct Expr* expr) {
-        char name[8 + 1];
-        sprintf(name, "%p", expr);
-        name[8] = '\0';
+        char name[8 * 2 + 1];
+        obj_id(expr, name);
 
         int* dist = hashtable_get(locals->h, name);
 
@@ -39,12 +43,10 @@ int locals_get(struct Expr* expr) {
 }
 
 void locals_set(struct Expr* expr, int depth) {
-        char name[8 + 1];
-        sprintf(name, "%p", expr);
-        name[8] = '\0';
+        char name[8 * 2 + 1];
+        obj_id(expr, name);
 
         hashtable_set(locals->h, name, &depth, sizeof(int));
-
 }
 
 struct Value* make_value(enum TokenType value) {
@@ -167,7 +169,7 @@ struct Value* visit_unary(struct ExprUnr* unary) {
 struct Value* look_up_variable(struct Token* name, struct Expr* expr) {
         int dist = locals_get(expr);
 
-        if (dist < 0) {
+        if (dist >= 0) {
                 return env_get_at(env, dist, name->lexeme);
         } else {
                 return env_get(global, name);
@@ -296,7 +298,7 @@ struct Value* visit_assignment(struct ExprAssignment* stmt) {
 
         int distance = locals_get((struct Expr*)stmt);
 
-        if (distance < 0) {
+        if (distance >= 0) {
                 env_assign_at(env, distance, stmt->name, v);
         } else {
                 env_assign(global, stmt->name, v);
@@ -388,8 +390,9 @@ void visit_declaration_stmt(struct VariableStatement* stmt) {
         if (stmt->value) {
                 v = evaluate_expr(stmt->value);
         }
+
         env_define(env, stmt->name->lexeme, v);
-        free(v);
+        if (v) free(v);
 }
 
 void execute_block(struct Statement* stmts, struct Environment* e) {
@@ -441,14 +444,15 @@ void execute(struct Statement* stmt) {
         }
 }
 
-void interpreter_resolve(struct Expr* expr, int depth) { 
+void interpreter_resolve(struct Expr* expr, int depth) {
         locals_set(expr, depth);
 }
+
+void locals_init() { locals = make_locals(); }
 
 void interpret(struct Statement* stmts) {
         env = make_env();
         global = env;
-        locals = make_locals();
         for (; stmts != NULL; stmts = stmts->next) {
                 execute(stmts);
         }
