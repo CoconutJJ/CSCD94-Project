@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "tokentype.h"
-
+extern int hasError;
 void report(int line, char * where, char * message) {
         fprintf(stderr, "[line ");
         fprintf(stderr, "%d", line);
@@ -10,10 +10,12 @@ void report(int line, char * where, char * message) {
         fprintf(stderr, ": ");
         fprintf(stderr, message);
         fprintf(stderr, "\n");
+        hasError = 1;
 
 }
 void error(int line, char * message) {
     report(line, "", message);
+    hasError = 1;
 }
 
 void runtime_error(struct Token * token, char * message) {

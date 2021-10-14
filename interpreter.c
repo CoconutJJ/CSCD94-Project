@@ -31,7 +31,7 @@ void obj_id(void* obj_addr, char id[17]) {
 
 int locals_get(struct Expr* expr) {
         char name[8 * 2 + 1];
-        obj_id(expr, name);
+        obj_id(expr->id, name);
 
         int* dist = hashtable_get(locals->h, name);
 
@@ -44,7 +44,7 @@ int locals_get(struct Expr* expr) {
 
 void locals_set(struct Expr* expr, int depth) {
         char name[8 * 2 + 1];
-        obj_id(expr, name);
+        obj_id(expr->id, name);
 
         hashtable_set(locals->h, name, &depth, sizeof(int));
 }
@@ -267,11 +267,12 @@ struct Value* visit_call_expr(struct ExprCall* expr) {
                 if (!curr) {
                         curr = evaluate_expr(arguments);
                         head = curr;
+                        
                 } else {
                         curr->next = evaluate_expr(arguments);
                         curr = curr->next;
-                        arguments = arguments->next;
                 }
+                arguments = arguments->next;
                 arg_count++;
         }
 

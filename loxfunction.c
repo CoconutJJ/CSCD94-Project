@@ -11,7 +11,7 @@ struct Value* function_call(struct Environment* global,
         struct Environment* e = new_env(callee->closure);
 
         struct Token* call_args = callee->declaration->params;
-
+        
         while (call_args != NULL) {
                 env_define(e, call_args->lexeme, arguments);
 

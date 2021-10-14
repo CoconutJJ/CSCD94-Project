@@ -13,8 +13,14 @@ extern struct Statement *parse();
 
 void run(char *source) {
         struct Token *head = tokenize(source);
+        
+        if (hasError) exit(EXIT_FAILURE);
+
         init_parser(head);
         struct Statement *p = parse();
+
+        if (hasError) exit(EXIT_FAILURE);
+
         locals_init();
         resolve_statements(p);
         interpret(p);

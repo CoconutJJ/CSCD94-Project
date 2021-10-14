@@ -126,7 +126,7 @@ void resolve_function(struct FunctionStatement* stmt) {
                 define(params);
                 params = params->next;
         }
-        resolve_stmt(stmt->body);
+        resolve_statements(stmt->body);
         scope_end();
 }
 

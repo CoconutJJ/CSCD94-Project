@@ -210,6 +210,7 @@ enum TokenType keyword(char *s) {
         IS_KEYWORD(s, "var", VAR);
         IS_KEYWORD(s, "while", WHILE);
         IS_KEYWORD(s, "async", ASYNC);
+        IS_KEYWORD(s, "fun", FUN);
         return -1;
 }
 

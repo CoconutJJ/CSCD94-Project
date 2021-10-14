@@ -6,6 +6,15 @@
 #include "expression.h"
 #include "tokentype.h"
 
+struct Value * copy_of(struct Value * v) {
+
+        struct Value *new_v = malloc(sizeof(struct Value));
+
+        *new_v = *v;
+
+        return new_v;
+
+}
 struct Environment* make_env() {
         struct Environment* env = malloc(sizeof(struct Environment));
         env->values = hashtable_new();
@@ -20,13 +29,7 @@ void env_define(struct Environment* env, char* name, struct Value* v) {
 struct Value* env_get(struct Environment* env, struct Token* name) {
         if (hashtable_has(env->values, name->lexeme)) {
                 struct Value* v = hashtable_get(env->values, name->lexeme);
-
-                // preserve hashtable entries, make a copy of data.
-                struct Value* new_v = malloc(sizeof(struct Value));
-
-                *new_v = *v;
-
-                return new_v;
+                return copy_of(v);
         }
 
         if (env->enclosing != NULL) {
@@ -47,7 +50,9 @@ struct Environment* env_ancestor(struct Environment* env, int distance) {
 }
 
 struct Value* env_get_at(struct Environment* env, int distance, char* name) {
-        return hashtable_get(env_ancestor(env, distance)->values, name);
+        struct Value * v = hashtable_get(env_ancestor(env, distance)->values, name);
+        
+        return copy_of(v);
 }
 
 void env_assign_at(struct Environment* env, int distance, struct Token* name,
