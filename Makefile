@@ -1,11 +1,14 @@
 GCC=gcc -g -Wall
 
-all: lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o loxfunction.o resolver.o
-	$(GCC) lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o loxfunction.o resolver.o -o lox
+all: lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o loxfunction.o resolver.o return.o
+	$(GCC) lox.c environment.o hashtable.o interpreter.o scanner.o parser.o error.o loxfunction.o resolver.o return.o -o lox
 
 clean:
 	rm *.o
-	
+
+return.o: return.c
+	$(GCC) -c return.c -o return.o
+
 resolver.o: resolver.c
 	$(GCC) -c resolver.c -o resolver.o
 loxfunction.o: loxfunction.c

@@ -548,8 +548,8 @@ struct IfStatement *parse_if_statement()
 
         if (match(ELSE)) {
                 new_if->elseBranch = parse_statement();
-        }
-
+        }       
+        
         return new_if;
 }
 

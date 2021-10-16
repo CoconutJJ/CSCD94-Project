@@ -22,3 +22,8 @@ void runtime_error(struct Token * token, char * message) {
     fprintf(stderr, "Runtime Error: [line %d] %s", token->line, message);
     exit(EXIT_FAILURE);
 }
+
+void UNREACHABLE(char * message) {
+    fprintf(stderr, message);
+    exit(EXIT_FAILURE);
+}

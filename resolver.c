@@ -7,43 +7,50 @@
 #include "interpreter.h"
 #include "resolve_types.h"
 #include "statement.h"
-static struct Scope* head = NULL;
-static struct Scope* scopes = NULL;
+static struct Scope *head = NULL;
+static struct Scope *scopes = NULL;
 static int scope_size = 0;
 
-void resolve_expr(struct Expr* expr);
-void resolve_stmt(struct Statement* stmt);
+void resolve_expr(struct Expr *expr);
+void resolve_stmt(struct Statement *stmt);
 
-struct Scope* make_scope() {
-        struct Scope* scope = malloc(sizeof(struct Scope));
+struct Scope *make_scope()
+{
+        struct Scope *scope = malloc(sizeof(struct Scope));
         scope->h = hashtable_new();
         scope->next = NULL;
         scope->prev = NULL;
         return scope;
 }
 
-void destroy_scope(struct Scope* scope) {
+void destroy_scope(struct Scope *scope)
+{
         hashtable_destroy(scope->h);
         free(scope);
 }
 
-void scope_set(char* lexeme, int set) {
+void scope_set(char *lexeme, int set)
+{
         hashtable_set(scopes->h, lexeme, &set, sizeof(int));
 }
 
-int scope_get(char* lexeme) {
-        int* state = hashtable_get(scopes->h, lexeme);
+int scope_get(char *lexeme)
+{
+        int *state = hashtable_get(scopes->h, lexeme);
 
-        if (!state) return -1;
+        if (!state)
+                return -1;
 
         return *state;
 }
 
-int scope_contains(struct Scope* scope, char* lexeme) {
+int scope_contains(struct Scope *scope, char *lexeme)
+{
         return hashtable_has(scope->h, lexeme);
 }
 
-void scope_begin() {
+void scope_begin()
+{
         if (!scopes) {
                 scopes = make_scope();
                 head = scopes;
@@ -57,12 +64,14 @@ void scope_begin() {
         scope_size++;
 }
 
-void scope_end() {
-        struct Scope* curr = scopes;
+void scope_end()
+{
+        struct Scope *curr = scopes;
 
         scopes = scopes->prev;
 
-        if (scopes) scopes->next = NULL;
+        if (scopes)
+                scopes->next = NULL;
 
         destroy_scope(curr);
         scope_size--;
@@ -70,15 +79,18 @@ void scope_end() {
 
 int empty_scope() { return scopes == NULL; }
 
-void resolve_statements(struct Statement* stmt) {
+void resolve_statements(struct Statement *stmt)
+{
         while (stmt) {
                 resolve_stmt(stmt);
                 stmt = stmt->next;
         }
 }
 
-void declare(struct Token* name) {
-        if (empty_scope()) return;
+void declare(struct Token *name)
+{
+        if (empty_scope())
+                return;
 
         if (scope_contains(scopes, name->lexeme)) {
                 runtime_error(
@@ -89,14 +101,17 @@ void declare(struct Token* name) {
         scope_set(name->lexeme, 0);
 }
 
-void define(struct Token* name) {
-        if (empty_scope()) return;
+void define(struct Token *name)
+{
+        if (empty_scope())
+                return;
 
         scope_set(name->lexeme, 1);
 }
 
-void resolve_local(struct Expr* expr, struct Token* name) {
-        struct Scope* curr = scopes;
+void resolve_local(struct Expr *expr, struct Token *name)
+{
+        struct Scope *curr = scopes;
         int i = scope_size - 1;
         while (curr) {
                 if (scope_contains(curr, name->lexeme)) {
@@ -108,19 +123,22 @@ void resolve_local(struct Expr* expr, struct Token* name) {
         }
 }
 
-void resolve_block_stmt(struct BlockStatement* stmt) {
+void resolve_block_stmt(struct BlockStatement *stmt)
+{
         scope_begin();
         resolve_statements(stmt->stmts);
         scope_end();
 }
 
-void resolve_expression_stmt(struct ExpressionStatement* stmt) {
+void resolve_expression_stmt(struct ExpressionStatement *stmt)
+{
         resolve_expr(stmt->expr);
 }
 
-void resolve_function(struct FunctionStatement* stmt) {
+void resolve_function(struct FunctionStatement *stmt)
+{
         scope_begin();
-        struct Token* params = stmt->params;
+        struct Token *params = stmt->params;
         while (params) {
                 declare(params);
                 define(params);
@@ -130,29 +148,36 @@ void resolve_function(struct FunctionStatement* stmt) {
         scope_end();
 }
 
-void resolve_function_stmt(struct FunctionStatement* stmt) {
+void resolve_function_stmt(struct FunctionStatement *stmt)
+{
         declare(stmt->name);
         define(stmt->name);
 
         resolve_function(stmt);
 }
 
-void resolve_if_stmt(struct IfStatement* stmt) {
+void resolve_if_stmt(struct IfStatement *stmt)
+{
         resolve_expr(stmt->condition);
         resolve_stmt(stmt->thenBranch);
 
-        if (stmt->elseBranch) resolve_stmt(stmt->elseBranch);
+        if (stmt->elseBranch)
+                resolve_stmt(stmt->elseBranch);
 }
 
-void resolve_print_stmt(struct PrintStatement* stmt) {
+void resolve_print_stmt(struct PrintStatement *stmt)
+{
         resolve_expr(stmt->expr);
 }
 
-void resolve_return_stmt(struct ReturnStatement* stmt) {
-        if (stmt->value) resolve_expr(stmt->value);
+void resolve_return_stmt(struct ReturnStatement *stmt)
+{
+        if (stmt->value)
+                resolve_expr(stmt->value);
 }
 
-void resolve_var_stmt(struct VariableStatement* stmt) {
+void resolve_var_stmt(struct VariableStatement *stmt)
+{
         declare(stmt->name);
         if (stmt->value) {
                 resolve_expr(stmt->value);
@@ -161,25 +186,29 @@ void resolve_var_stmt(struct VariableStatement* stmt) {
         define(stmt->name);
 }
 
-void resolve_while_stmt(struct WhileStatement* stmt) {
+void resolve_while_stmt(struct WhileStatement *stmt)
+{
         resolve_expr(stmt->condition);
         resolve_stmt(stmt->body);
 }
 
-void resolve_assign_expr(struct ExprAssignment* assign) {
+void resolve_assign_expr(struct ExprAssignment *assign)
+{
         resolve_expr(assign->value);
-        resolve_local((struct Expr*)assign, assign->name);
+        resolve_local((struct Expr *)assign, assign->name);
 }
 
-void resolve_binary_expr(struct ExprBin* bin) {
+void resolve_binary_expr(struct ExprBin *bin)
+{
         resolve_expr(bin->left);
         resolve_expr(bin->right);
 }
 
-void resolve_call_expr(struct ExprCall* call) {
+void resolve_call_expr(struct ExprCall *call)
+{
         resolve_expr(call->callee);
 
-        struct Expr* args = call->arguments;
+        struct Expr *args = call->arguments;
 
         while (args) {
                 resolve_expr(args);
@@ -187,87 +216,101 @@ void resolve_call_expr(struct ExprCall* call) {
         }
 }
 
-void resolve_grouping_expr(struct ExprGrouping* group) {
+void resolve_grouping_expr(struct ExprGrouping *group)
+{
         resolve_expr(group->child);
 }
 
-void resolve_literal_expr(struct ExprLiteral* lit) {
+void resolve_literal_expr(struct ExprLiteral *lit)
+{
         // we don't do anything.
         return;
 }
 
-void resolve_logical_expr(struct ExprLogical* log) {
+void resolve_logical_expr(struct ExprLogical *log)
+{
         resolve_expr(log->left);
         resolve_expr(log->right);
 }
 
-void resolve_unary_expr(struct ExprUnr* unr) { resolve_expr(unr->child); }
+void resolve_unary_expr(struct ExprUnr *unr) { resolve_expr(unr->child); }
 
-void resolve_var_expr(struct ExprVariable* expr) {
+void resolve_var_expr(struct ExprVariable *expr)
+{
         if (!empty_scope() && scope_get(expr->name->lexeme) == 0) {
                 runtime_error(
                     expr->name,
                     "Can't read local variable in its own initializer");
         }
 
-        resolve_local((struct Expr*)expr, expr->name);
+        resolve_local((struct Expr *)expr, expr->name);
 }
 
-void resolve_expr(struct Expr* expr) {
+void resolve_expr(struct Expr *expr)
+{
         switch (expr->type) {
         case BINARY:
-                resolve_binary_expr((struct ExprBin*)expr);
+                resolve_binary_expr((struct ExprBin *)expr);
                 break;
         case UNARY:
-                resolve_unary_expr((struct ExprUnr*)expr);
+                resolve_unary_expr((struct ExprUnr *)expr);
                 break;
         case LITERAL:
-                resolve_literal_expr((struct ExprLiteral*)expr);
+                resolve_literal_expr((struct ExprLiteral *)expr);
                 break;
         case GROUPING:
-                resolve_grouping_expr((struct ExprGrouping*)expr);
+                resolve_grouping_expr((struct ExprGrouping *)expr);
                 break;
         case VARIABLE:
-                resolve_var_expr((struct ExprVariable*)expr);
+                resolve_var_expr((struct ExprVariable *)expr);
                 break;
         case ASSIGNMENT:
-                resolve_assign_expr((struct ExprAssignment*)expr);
+                resolve_assign_expr((struct ExprAssignment *)expr);
                 break;
         case CALL:
-                resolve_call_expr((struct ExprCall*)expr);
+                resolve_call_expr((struct ExprCall *)expr);
                 break;
         case LOGICAL:
-                resolve_logical_expr((struct ExprLogical*)expr);
+                resolve_logical_expr((struct ExprLogical *)expr);
                 break;
         default:
+                UNREACHABLE(
+                    "resolve_expr: executed unreachable default condition");
                 break;
         }
 }
 
-void resolve_stmt(struct Statement* stmt) {
+void resolve_stmt(struct Statement *stmt)
+{
         switch (stmt->type) {
         case S_BLK:
-                resolve_block_stmt((struct BlockStatement*)stmt);
+                resolve_block_stmt((struct BlockStatement *)stmt);
+                break;
+        case S_RET:
+                resolve_return_stmt((struct ReturnStatement *)stmt);
                 break;
         case S_FUN:
-                resolve_function_stmt((struct FunctionStatement*)stmt);
+                resolve_function_stmt((struct FunctionStatement *)stmt);
                 break;
         case S_IF:
-                resolve_if_stmt((struct IfStatement*)stmt);
+                resolve_if_stmt((struct IfStatement *)stmt);
                 break;
         case S_PRINT:
-                resolve_print_stmt((struct PrintStatement*)stmt);
+                resolve_print_stmt((struct PrintStatement *)stmt);
                 break;
         case S_VAR:
-                resolve_var_stmt((struct VariableStatement*)stmt);
+                resolve_var_stmt((struct VariableStatement *)stmt);
                 break;
         case S_EXPR:
-                resolve_expression_stmt((struct ExpressionStatement*)stmt);
+                resolve_expression_stmt((struct ExpressionStatement *)stmt);
                 break;
         case S_WHILE:
-                resolve_while_stmt((struct WhileStatement*)stmt);
+                resolve_while_stmt((struct WhileStatement *)stmt);
                 break;
         default:
+                UNREACHABLE(
+                    "resolve_stmt: executed unreachable default condition");
+
                 break;
         }
 }

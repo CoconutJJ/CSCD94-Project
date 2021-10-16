@@ -1,39 +1,42 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "environment.h"
 #include "environment_types.h"
 #include "error.h"
 #include "expression.h"
 #include "loxfunction.h"
+#include "return.h"
 #include "statement.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-struct Environment* global;
-struct Environment* env;
-struct Locals* locals;
+struct Environment *global;
+struct Environment *env;
+struct Locals *locals;
 
-struct Value* evaluate_expr(struct Expr* expr);
-void execute(struct Statement* stmt);
+struct Value *evaluate_expr(struct Expr *expr);
+void execute(struct Statement *stmt);
 
-struct Locals* make_locals() {
-        struct Locals* l = malloc(sizeof(struct Locals));
+struct Locals *make_locals()
+{
+        struct Locals *l = malloc(sizeof(struct Locals));
 
         l->h = hashtable_new();
 
         return l;
 }
 
-void obj_id(void* obj_addr, char id[17]) {
+void obj_id(void *obj_addr, char id[17])
+{
         sprintf(id, "%p", obj_addr);
         id[16] = '\0';
 }
 
-int locals_get(struct Expr* expr) {
+int locals_get(struct Expr *expr)
+{
         char name[8 * 2 + 1];
         obj_id(expr->id, name);
 
-        int* dist = hashtable_get(locals->h, name);
+        int *dist = hashtable_get(locals->h, name);
 
         if (!dist) {
                 return -1;
@@ -42,20 +45,23 @@ int locals_get(struct Expr* expr) {
         }
 }
 
-void locals_set(struct Expr* expr, int depth) {
+void locals_set(struct Expr *expr, int depth)
+{
         char name[8 * 2 + 1];
         obj_id(expr->id, name);
 
         hashtable_set(locals->h, name, &depth, sizeof(int));
 }
 
-struct Value* make_value(enum TokenType value) {
-        struct Value* v = malloc(sizeof(struct Value));
+struct Value *make_value(enum TokenType value)
+{
+        struct Value *v = malloc(sizeof(struct Value));
         v->type = value;
         return v;
 }
 
-int is_truthy(struct Value* v) {
+int is_truthy(struct Value *v)
+{
         switch (v->type) {
         case NUMBER:
                 return v->d != 0;
@@ -67,33 +73,40 @@ int is_truthy(struct Value* v) {
         case NIL:
                 return 0;
         default:
-                // TODO: unreachable
+                UNREACHABLE(
+                    "is_truthy: executed unreachable default condition");
                 break;
         }
 
         return 0;
 }
 
-void check_number_operand(struct Token* operator, struct Value * operand) {
-        if (operand->type == NUMBER) return;
+void check_number_operand(struct Token *operator, struct Value * operand)
+{
+        if (operand->type == NUMBER)
+                return;
         runtime_error(operator, "Operand must be number!");
 }
 
-void check_number_operands(struct Token* operator, struct Value * left,
-                           struct Value* right) {
-        if (left->type == NUMBER && right->type == NUMBER) return;
+void check_number_operands(struct Token *operator, struct Value * left,
+                           struct Value *right)
+{
+        if (left->type == NUMBER && right->type == NUMBER)
+                return;
 
         runtime_error(operator, "Operands must be numbers!");
 }
 
-char* string_concat(char* l, char* r) {
-        char* c = malloc(strlen(l) + strlen(r) + 1);
+char *string_concat(char *l, char *r)
+{
+        char *c = malloc(strlen(l) + strlen(r) + 1);
         strcpy(c, l);
         strcat(c, r);
         return c;
 }
 
-int is_equal(struct Value* l, struct Value* r) {
+int is_equal(struct Value *l, struct Value *r)
+{
         if (l->type == NUMBER && r->type == NUMBER) {
                 return (l->d == r->d);
         } else if (l->type == STRING && r->type == STRING) {
@@ -103,12 +116,13 @@ int is_equal(struct Value* l, struct Value* r) {
         }
 }
 
-struct Value* visit_literal(struct ExprLiteral* literal) {
-        struct Value* v;
+struct Value *visit_literal(struct ExprLiteral *literal)
+{
+        struct Value *v;
         v = make_value(literal->token->type);
         switch (literal->token->type) {
         case NUMBER:
-                v->d = *((double*)literal->token->literal);
+                v->d = *((double *)literal->token->literal);
                 break;
         case STRING:
                 v->s = literal->token->literal;
@@ -121,33 +135,39 @@ struct Value* visit_literal(struct ExprLiteral* literal) {
         case NIL:
                 break;
         default:
-                // TODO: unreachable
+                UNREACHABLE(
+                    "visit_literal: executed unreachable default condition");
                 break;
         }
 
         return v;
 }
 
-struct Value* visit_logical(struct ExprLogical* logical) {
-        struct Value* left = evaluate_expr(logical->left);
+struct Value *visit_logical(struct ExprLogical *logical)
+{
+        struct Value *left = evaluate_expr(logical->left);
 
         if (logical->token->type == OR) {
-                if (is_truthy(left)) return left;
+                if (is_truthy(left))
+                        return left;
         } else {
-                if (!is_truthy(left)) return left;
+                if (!is_truthy(left))
+                        return left;
         }
 
         return evaluate_expr(logical->right);
 }
 
-struct Value* visit_grouping(struct ExprGrouping* group) {
-        struct Value* v = evaluate_expr(group->child);
+struct Value *visit_grouping(struct ExprGrouping *group)
+{
+        struct Value *v = evaluate_expr(group->child);
 
         return v;
 }
 
-struct Value* visit_unary(struct ExprUnr* unary) {
-        struct Value* v = evaluate_expr(unary->child);
+struct Value *visit_unary(struct ExprUnr *unary)
+{
+        struct Value *v = evaluate_expr(unary->child);
 
         switch (unary->token->type) {
         case MINUS:
@@ -161,14 +181,17 @@ struct Value* visit_unary(struct ExprUnr* unary) {
                 v->b = state;
                 break;
         default:
+                UNREACHABLE(
+                    "visit_unary: executed unreachable default condition");
+
                 break;
         }
         return v;
 }
 
-struct Value* look_up_variable(struct Token* name, struct Expr* expr) {
+struct Value *look_up_variable(struct Token *name, struct Expr *expr)
+{
         int dist = locals_get(expr);
-
         if (dist >= 0) {
                 return env_get_at(env, dist, name->lexeme);
         } else {
@@ -176,16 +199,20 @@ struct Value* look_up_variable(struct Token* name, struct Expr* expr) {
         }
 }
 
-struct Value* visit_variable(struct ExprVariable* variable) {
-        // return env_get(env, variable->name);
-        return look_up_variable(variable->name, (struct Expr*)variable);
+struct Value *visit_variable(struct ExprVariable *variable)
+{
+        struct Value *v =
+            look_up_variable(variable->name, (struct Expr *)variable);
+
+        return v;
 }
 
-struct Value* visit_binary(struct ExprBin* binary) {
-        struct Value* l = evaluate_expr(binary->left);
-        struct Value* r = evaluate_expr(binary->right);
+struct Value *visit_binary(struct ExprBin *binary)
+{
+        struct Value *l = evaluate_expr(binary->left);
+        struct Value *r = evaluate_expr(binary->right);
 
-        struct Value* v;
+        struct Value *v;
         bool b;
         switch (binary->token->type) {
         case MINUS:
@@ -247,6 +274,9 @@ struct Value* visit_binary(struct ExprBin* binary) {
                 v->b = b;
                 break;
         default:
+                UNREACHABLE("visit_binary_expr: executed unreachable default "
+                            "condition");
+
                 break;
         }
 
@@ -256,18 +286,19 @@ struct Value* visit_binary(struct ExprBin* binary) {
         return v;
 }
 
-struct Value* visit_call_expr(struct ExprCall* expr) {
-        struct Value* callee = evaluate_expr(expr->callee);
+struct Value *visit_call_expr(struct ExprCall *expr)
+{
+        struct Value *callee = evaluate_expr(expr->callee);
 
-        struct Expr* arguments = expr->arguments;
-        struct Value* head = NULL;
-        struct Value* curr = NULL;
+        struct Expr *arguments = expr->arguments;
+        struct Value *head = NULL;
+        struct Value *curr = NULL;
         int arg_count = 0;
         while (arguments != NULL) {
                 if (!curr) {
                         curr = evaluate_expr(arguments);
                         head = curr;
-                        
+
                 } else {
                         curr->next = evaluate_expr(arguments);
                         curr = curr->next;
@@ -287,17 +318,18 @@ struct Value* visit_call_expr(struct ExprCall* expr) {
                     "Function call invoked with incorrect number of arguments");
         }
 
-        struct Value* ret = function_call(global, callee, head);
+        struct Value *ret = function_call(global, callee, head);
 
         free(callee);
 
         return ret;
 }
 
-struct Value* visit_assignment(struct ExprAssignment* stmt) {
-        struct Value* v = evaluate_expr(stmt->value);
+struct Value *visit_assignment(struct ExprAssignment *stmt)
+{
+        struct Value *v = evaluate_expr(stmt->value);
 
-        int distance = locals_get((struct Expr*)stmt);
+        int distance = locals_get((struct Expr *)stmt);
 
         if (distance >= 0) {
                 env_assign_at(env, distance, stmt->name, v);
@@ -308,38 +340,45 @@ struct Value* visit_assignment(struct ExprAssignment* stmt) {
         return v;
 }
 
-struct Value* evaluate_expr(struct Expr* expr) {
+struct Value *evaluate_expr(struct Expr *expr)
+{
         switch (expr->type) {
         case BINARY:
-                return visit_binary((struct ExprBin*)expr);
+                return visit_binary((struct ExprBin *)expr);
         case UNARY:
-                return visit_unary((struct ExprUnr*)expr);
+                return visit_unary((struct ExprUnr *)expr);
         case LITERAL:
-                return visit_literal((struct ExprLiteral*)expr);
+                return visit_literal((struct ExprLiteral *)expr);
         case GROUPING:
-                return visit_grouping((struct ExprGrouping*)expr);
+                return visit_grouping((struct ExprGrouping *)expr);
         case VARIABLE:
-                return visit_variable((struct ExprVariable*)expr);
+                return visit_variable((struct ExprVariable *)expr);
         case ASSIGNMENT:
-                return visit_assignment((struct ExprAssignment*)expr);
+                return visit_assignment((struct ExprAssignment *)expr);
         case CALL:
-                return visit_call_expr((struct ExprCall*)expr);
+                return visit_call_expr((struct ExprCall *)expr);
         case LOGICAL:
-                return visit_logical((struct ExprLogical*)expr);
+                return visit_logical((struct ExprLogical *)expr);
         default:
+                UNREACHABLE(
+                    "evaluate_expr: executed unreachable default condition");
+
                 break;
         }
 
         return NULL;
 }
 
-void visit_expression_stmt(struct ExpressionStatement* stmt) {
-        struct Value* v = evaluate_expr(stmt->expr);
+void visit_expression_stmt(struct ExpressionStatement *stmt)
+{
+        struct Value *v = evaluate_expr(stmt->expr);
 
-        if (v) free(v);
+        if (v)
+                free(v);
 }
 
-void visit_if_stmt(struct IfStatement* stmt) {
+void visit_if_stmt(struct IfStatement *stmt)
+{
         if (is_truthy(evaluate_expr(stmt->condition))) {
                 execute(stmt->thenBranch);
         } else if (stmt->elseBranch != NULL) {
@@ -347,21 +386,24 @@ void visit_if_stmt(struct IfStatement* stmt) {
         }
 }
 
-void visit_while_stmt(struct WhileStatement* stmt) {
+void visit_while_stmt(struct WhileStatement *stmt)
+{
         while (is_truthy(evaluate_expr(stmt->condition))) {
-                execute((struct Statement*)stmt->body);
+                execute((struct Statement *)stmt->body);
         }
 }
 
-void visit_function_stmt(struct FunctionStatement* stmt) {
-        struct Value* f = make_value(FUN);
+void visit_function_stmt(struct FunctionStatement *stmt)
+{
+        struct Value *f = make_value(FUN);
         f->declaration = stmt;
         f->closure = env;
         env_define(env, stmt->name->lexeme, f);
 }
 
-void visit_print_stmt(struct PrintStatement* stmt) {
-        struct Value* v = evaluate_expr(stmt->expr);
+void visit_print_stmt(struct PrintStatement *stmt)
+{
+        struct Value *v = evaluate_expr(stmt->expr);
 
         switch (v->type) {
         case NUMBER:
@@ -380,24 +422,28 @@ void visit_print_stmt(struct PrintStatement* stmt) {
                 printf("nil");
                 break;
         default:
-                // TODO: unreachable
+                UNREACHABLE(
+                    "visit_print_stmt: executed unreachable default condition");
                 break;
         }
         free(v);
 }
 
-void visit_declaration_stmt(struct VariableStatement* stmt) {
-        struct Value* v = NULL;
+void visit_declaration_stmt(struct VariableStatement *stmt)
+{
+        struct Value *v = NULL;
         if (stmt->value) {
                 v = evaluate_expr(stmt->value);
         }
 
         env_define(env, stmt->name->lexeme, v);
-        if (v) free(v);
+        if (v)
+                free(v);
 }
 
-void execute_block(struct Statement* stmts, struct Environment* e) {
-        struct Environment* previous = env;
+void execute_block(struct Statement *stmts, struct Environment *e)
+{
+        struct Environment *previous = env;
 
         env = e;
 
@@ -409,49 +455,70 @@ void execute_block(struct Statement* stmts, struct Environment* e) {
         env = previous;
 }
 
-void visit_block_stmt(struct BlockStatement* blk) {
-        struct Environment* e = new_env(env);
+void visit_block_stmt(struct BlockStatement *blk)
+{
+        struct Environment *e = new_env(env);
 
         execute_block(blk->stmts, e);
 
         destroy_env(e);
 }
 
-void execute(struct Statement* stmt) {
+void visit_return_stmt(struct ReturnStatement *stmt)
+{
+        struct Value *v;
+        if (stmt->value) {
+                v = evaluate_expr(stmt->value);
+        } else {
+                v = make_value(NIL);
+        }
+
+        return_break(v);
+}
+
+void execute(struct Statement *stmt)
+{
         switch (stmt->type) {
         case S_BLK:
-                visit_block_stmt((struct BlockStatement*)stmt);
+                visit_block_stmt((struct BlockStatement *)stmt);
+                break;
+        case S_RET:
+                visit_return_stmt((struct ReturnStatement *)stmt);
                 break;
         case S_FUN:
-                visit_function_stmt((struct FunctionStatement*)stmt);
+                visit_function_stmt((struct FunctionStatement *)stmt);
                 break;
         case S_IF:
-                visit_if_stmt((struct IfStatement*)stmt);
+                visit_if_stmt((struct IfStatement *)stmt);
                 break;
         case S_PRINT:
-                visit_print_stmt((struct PrintStatement*)stmt);
+                visit_print_stmt((struct PrintStatement *)stmt);
                 break;
         case S_VAR:
-                visit_declaration_stmt((struct VariableStatement*)stmt);
+                visit_declaration_stmt((struct VariableStatement *)stmt);
                 break;
         case S_EXPR:
-                visit_expression_stmt((struct ExpressionStatement*)stmt);
+                visit_expression_stmt((struct ExpressionStatement *)stmt);
                 break;
         case S_WHILE:
-                visit_while_stmt((struct WhileStatement*)stmt);
+                visit_while_stmt((struct WhileStatement *)stmt);
                 break;
         default:
+                UNREACHABLE("execute: executed unreachable default condition");
+
                 break;
         }
 }
 
-void interpreter_resolve(struct Expr* expr, int depth) {
+void interpreter_resolve(struct Expr *expr, int depth)
+{
         locals_set(expr, depth);
 }
 
 void locals_init() { locals = make_locals(); }
 
-void interpret(struct Statement* stmts) {
+void interpret(struct Statement *stmts)
+{
         env = make_env();
         global = env;
         for (; stmts != NULL; stmts = stmts->next) {

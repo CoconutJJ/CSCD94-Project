@@ -1,5 +1,5 @@
 #include <stdlib.h>
-
+#include <stdio.h>
 #include "./hashtable/hash_table.h"
 #include "environment_types.h"
 #include "error.h"
@@ -51,7 +51,6 @@ struct Environment* env_ancestor(struct Environment* env, int distance) {
 
 struct Value* env_get_at(struct Environment* env, int distance, char* name) {
         struct Value * v = hashtable_get(env_ancestor(env, distance)->values, name);
-        
         return copy_of(v);
 }
 
