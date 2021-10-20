@@ -5,6 +5,7 @@
 #include "loxfunction.h"
 #include "return.h"
 #include "statement.h"
+#include "value.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,29 +54,7 @@ void locals_set(struct Expr *expr, int depth)
         hashtable_set(locals->h, name, &depth, sizeof(int));
 }
 
-struct Value *make_value(enum TokenType value)
-{
-        struct Value *v = malloc(sizeof(struct Value));
-        v->type = value;
-        v->refs = 1;
-        return v;
-}
 
-void ref_value(struct Value *v) {
-        v->refs++;
-}
-
-void deref_value(struct Value *v)
-{
-        v->refs--;
-
-        if (v->refs != 0) return; 
-
-        if (v->type == STRING)
-                free(v->s);
-
-        free(v);
-}
 
 int is_truthy(struct Value *v)
 {
@@ -187,17 +166,17 @@ struct Value *visit_grouping(struct ExprGrouping *group)
 struct Value *visit_unary(struct ExprUnr *unary)
 {
         struct Value *v = evaluate_expr(unary->child);
-
+        struct Value *c = make_value(unary->token->type);
         switch (unary->token->type) {
         case MINUS:
                 check_number_operand(unary->token, v);
-                v->d = -(v->d);
+                c->d = -(v->d);
                 break;
         case BANG:
                 // TODO: free string case
                 int state = !is_truthy(v);
-                v->type = (state == 1) ? TRUE : FALSE;
-                v->b = state;
+                c->type = (state == 1) ? TRUE : FALSE;
+                c->b = state;
                 break;
         default:
                 UNREACHABLE(
@@ -205,7 +184,8 @@ struct Value *visit_unary(struct ExprUnr *unary)
 
                 break;
         }
-        return v;
+        deref_value(v);
+        return c;
 }
 
 struct Value *look_up_variable(struct Token *name, struct Expr *expr)
@@ -299,8 +279,8 @@ struct Value *visit_binary(struct ExprBin *binary)
                 break;
         }
 
-        free(l);
-        free(r);
+        deref_value(l);
+        deref_value(v);
 
         return v;
 }
@@ -339,7 +319,7 @@ struct Value *visit_call_expr(struct ExprCall *expr)
 
         struct Value *ret = function_call(global, callee, head);
 
-        free(callee);
+        deref_value(callee);
 
         return ret;
 }
@@ -392,7 +372,7 @@ void visit_expression_stmt(struct ExpressionStatement *stmt)
         struct Value *v = evaluate_expr(stmt->expr);
 
         if (v)
-                free(v);
+                deref_value(v);
 }
 
 void visit_if_stmt(struct IfStatement *stmt)
@@ -444,7 +424,7 @@ void visit_print_stmt(struct PrintStatement *stmt)
                     "visit_print_stmt: executed unreachable default condition");
                 break;
         }
-        free(v);
+        deref_value(v);
 }
 
 void visit_declaration_stmt(struct VariableStatement *stmt)
@@ -456,7 +436,7 @@ void visit_declaration_stmt(struct VariableStatement *stmt)
 
         env_define(env, stmt->name->lexeme, v);
         if (v)
-                free(v);
+                deref_value(v);
 }
 
 void execute_block(struct Statement *stmts, struct Environment *e)

@@ -10,4 +10,5 @@ void *hashtable_get(struct hashtable *t, char *key);
 int hashtable_has(struct hashtable *t, char *key);
 void hashtable_destroy(struct hashtable *table);
 void initialize_hashtable(struct hashtable *t);
+void *hashtable_next_item(struct hashtable *table, int *pos);
 #endif

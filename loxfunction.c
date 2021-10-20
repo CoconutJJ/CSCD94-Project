@@ -3,6 +3,7 @@
 #include "interpreter.h"
 #include "return.h"
 #include "statement.h"
+#include "value.h"
 #include <setjmp.h>
 #include <stdlib.h>
 
@@ -21,7 +22,7 @@ struct Value *function_call(struct Environment *global, struct Value *callee,
                 call_args = call_args->next;
                 arguments = arguments->next;
         }
-        
+
         struct ReturnEnv *ret = push_return_env();
 
         struct Value *ret_value = NULL;
@@ -41,8 +42,7 @@ struct Value *function_call(struct Environment *global, struct Value *callee,
                  * which will return 1 and will execute the else clause instead.
                  */
 
-                ret_value = malloc(sizeof(struct Value));
-                ret_value->type = NIL;
+                ret_value = make_value(NIL);
 
         } else {
 
@@ -71,5 +71,6 @@ struct Value *function_call(struct Environment *global, struct Value *callee,
         env = ret->original_env;
 
         pop_return_env();
+        
         return ret_value;
 }

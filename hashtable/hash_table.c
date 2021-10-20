@@ -9,19 +9,22 @@
  * Linear probing hashtable.
  */
 
-unsigned long hash(char *key) {
+unsigned long hash(char *key)
+{
         /**
          * djb2 hash method
          */
         unsigned long hash = 5381;
         int c;
 
-        while ((c = *key++)) hash = ((hash << 5) + hash) ^ c;
+        while ((c = *key++))
+                hash = ((hash << 5) + hash) ^ c;
 
         return hash;
 }
 
-void initialize_containers(struct hashtable *t) {
+void initialize_containers(struct hashtable *t)
+{
         for (int i = 0; i < t->size; i++) {
                 t->table[i].key = NULL;
                 t->table[i].item = NULL;
@@ -29,7 +32,8 @@ void initialize_containers(struct hashtable *t) {
         }
 }
 
-void initialize_hashtable(struct hashtable *t) {
+void initialize_hashtable(struct hashtable *t)
+{
         t->table = malloc(sizeof(struct hashcontainer));
         t->table->key = NULL;
         t->table->item = NULL;
@@ -40,7 +44,8 @@ void initialize_hashtable(struct hashtable *t) {
 /**
  * Create a new hashtable
  */
-struct hashtable *hashtable_new() {
+struct hashtable *hashtable_new()
+{
         struct hashtable *new = malloc(sizeof(struct hashtable));
 
         if (!new) {
@@ -62,13 +67,33 @@ struct hashtable *hashtable_new() {
 
         return new;
 }
+
+void *hashtable_next_item(struct hashtable *table, int *pos)
+{
+
+        while (*pos < table->size) {
+                if (table->table[*pos].key != NULL) {
+                        void *item = table->table[*pos].item;
+                        *pos = *pos + 1;
+
+                        if (!item) continue;
+
+                        return item;
+                }
+                *pos = *pos + 1;
+        }
+
+        return NULL;
+}
+
 /**
  * Destroy the hash table
  */
-void hashtable_destroy(struct hashtable *table) {
+void hashtable_destroy(struct hashtable *table)
+{
         for (int i = 0; i < table->size; i++) {
                 if (table->table[i].key != NULL) {
-                        if (table->table[i].item) free(table->table[i].item);
+                        // if (table->table[i].item) free(table->table[i].item);
                         free(table->table[i].key);
                 }
         }
@@ -79,7 +104,8 @@ void hashtable_destroy(struct hashtable *table) {
 /**
  * Sets an entry in the hashtable
  */
-void hashtable_find_and_set(struct hashtable *t, char *key, void *item) {
+void hashtable_find_and_set(struct hashtable *t, char *key, void *item)
+{
         assert(t->filled != t->size);
 
         int index = hash(key) % t->size, currIndex = index;
@@ -99,7 +125,8 @@ void hashtable_find_and_set(struct hashtable *t, char *key, void *item) {
                          * We've hit a never used before empty cell, key cannot
                          * possibly exist.
                          */
-                        if (!free_slot->deleted) break;
+                        if (!free_slot->deleted)
+                                break;
                 }
 
                 /*
@@ -107,7 +134,8 @@ void hashtable_find_and_set(struct hashtable *t, char *key, void *item) {
                  */
                 if (node->key && strcmp(node->key, key) == 0) {
                         free(node->key);
-                        if (node->item) free(node->item);
+                        if (node->item)
+                                free(node->item);
 
                         node->item = NULL;
                         node->key = NULL;
@@ -118,7 +146,8 @@ void hashtable_find_and_set(struct hashtable *t, char *key, void *item) {
                          * instead (since it occurs earlier), otherwise empty
                          * this slot and use this one.
                          */
-                        if (!free_slot) free_slot = node;
+                        if (!free_slot)
+                                free_slot = node;
 
                         break;
                 }
@@ -141,7 +170,8 @@ void hashtable_find_and_set(struct hashtable *t, char *key, void *item) {
 /**
  * Expand hashtable by a factor of 2
  */
-void expand_hashtable(struct hashtable *t) {
+void expand_hashtable(struct hashtable *t)
+{
         /**
          * Here we detach the original containers list and create a fresh one
          * of 2 times the size
@@ -181,8 +211,10 @@ void expand_hashtable(struct hashtable *t) {
 /**
  * Shrink the hashtable by a factor of 2. If size is unit, then nothing is done.
  */
-void shrink_hashtable(struct hashtable *t) {
-        if (t->size == 1) return;
+void shrink_hashtable(struct hashtable *t)
+{
+        if (t->size == 1)
+                return;
 
         struct hashcontainer *new_container =
             malloc(t->size / 2 * sizeof(struct hashcontainer));
@@ -212,7 +244,8 @@ void shrink_hashtable(struct hashtable *t) {
 /**
  * Delete the entry from the hashtable
  */
-void hashtable_delete(struct hashtable *t, char *key) {
+void hashtable_delete(struct hashtable *t, char *key)
+{
         struct hashcontainer *node;
 
         int index = hash(key) % t->size, currIndex = index;
@@ -223,12 +256,13 @@ void hashtable_delete(struct hashtable *t, char *key) {
         while (strcmp((node = &(t->table[currIndex]))->key, key) != 0) {
                 currIndex = (currIndex + 1) % t->size;
 
-                if (currIndex == index) return;
+                if (currIndex == index)
+                        return;
         }
 
         free(node->key);
 
-        if (node->item) free(node->item);
+        // if (node->item) free(node->item);
 
         node->key = NULL;
         node->item = NULL;
@@ -240,13 +274,15 @@ void hashtable_delete(struct hashtable *t, char *key) {
          * Only shrink if used space has dropped to less than one quarter of
          * allocated space
          */
-        if (t->filled <= t->size / 4) shrink_hashtable(t);
+        if (t->filled <= t->size / 4)
+                shrink_hashtable(t);
 }
 
 /**
  * Return a pointer to the entry with provided key.
  */
-void *hashtable_get(struct hashtable *t, char *key) {
+void *hashtable_get(struct hashtable *t, char *key)
+{
         int index = hash(key) % t->size, currIndex = index;
         while (1) {
                 /**
@@ -255,7 +291,8 @@ void *hashtable_get(struct hashtable *t, char *key) {
 
                 if (t->table[currIndex].deleted) {
                         currIndex = (currIndex + 1) % t->size;
-                        if (currIndex == index) return NULL;
+                        if (currIndex == index)
+                                return NULL;
                         continue;
                 }
 
@@ -276,19 +313,22 @@ void *hashtable_get(struct hashtable *t, char *key) {
                  * We have looped through everything, entry clearly does not
                  * exist.
                  */
-                if (currIndex == index) return NULL;
+                if (currIndex == index)
+                        return NULL;
         }
 }
 
 /**
  * Sets an entry in the table.
  */
-void hashtable_set(struct hashtable *t, char *key, void *item, int item_sz) {
+void hashtable_set(struct hashtable *t, char *key, void *item, int item_sz)
+{
         /**
          * Need to ensure we have enough space for another entry, expand
          * otherwise.
          */
-        if (t->filled == t->size) expand_hashtable(t);
+        if (t->filled == t->size)
+                expand_hashtable(t);
 
         /**
          * Copy the key and item data, external pointers may go out of scope
@@ -303,21 +343,24 @@ void hashtable_set(struct hashtable *t, char *key, void *item, int item_sz) {
 
         strcpy(memkey, key);
 
-        void *memitem = NULL;
-        if (item) {
-                memitem = malloc(item_sz);
+        // void *memitem = NULL;
+        // if (item) {
+        //         memitem = malloc(item_sz);
 
-                if (!memitem) {
-                        perror("malloc");
-                        exit(EXIT_FAILURE);
-                }
+        //         if (!memitem) {
+        //                 perror("malloc");
+        //                 exit(EXIT_FAILURE);
+        //         }
 
-                memcpy(memitem, item, item_sz);
-        }
-        hashtable_find_and_set(t, memkey, memitem);
+        //         memcpy(memitem, item, item_sz);
+        // }
+        // hashtable_find_and_set(t, memkey, memitem);
+
+        hashtable_find_and_set(t, memkey, item);
 }
 
-int hashtable_has(struct hashtable *t, char *key) {
+int hashtable_has(struct hashtable *t, char *key)
+{
         int index = hash(key) % t->size, currIndex = index;
         while (1) {
                 if (t->table[index].key &&
@@ -326,6 +369,7 @@ int hashtable_has(struct hashtable *t, char *key) {
 
                 currIndex = (currIndex + 1) % t->size;
 
-                if (currIndex == index) return 0;
+                if (currIndex == index)
+                        return 0;
         }
 }
