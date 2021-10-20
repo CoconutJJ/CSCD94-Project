@@ -5,12 +5,13 @@
 struct ReturnEnv {
         jmp_buf ret;
         struct Value *return_value;
+        struct Environment * original_env;
         struct ReturnEnv *next;
         struct ReturnEnv *prev;
 };
 
-struct ReturnEnv *head = NULL;
-struct ReturnEnv *curr = NULL;
+static struct ReturnEnv *head = NULL;
+static struct ReturnEnv *curr = NULL;
 
 struct ReturnEnv *make_return_env()
 {
@@ -18,11 +19,12 @@ struct ReturnEnv *make_return_env()
         new->next = NULL;
         new->prev = NULL;
         new->return_value = NULL;
-
+        new->original_env = NULL;
+        
         return new;
 }
 
-void push_return_env()
+struct ReturnEnv * push_return_env()
 {
 
         if (!curr) {
@@ -33,6 +35,8 @@ void push_return_env()
                 curr->next->prev = curr;
                 curr = curr->next;
         }
+
+        return curr;
 }
 
 void pop_return_env()
@@ -46,33 +50,6 @@ void pop_return_env()
         curr = prev;
 }
 
-void return_break(struct Value *v)
-{
-        curr->return_value = v;
-        longjmp(curr->ret, 1);
-}
-
-struct Value *catch_return()
-{
-
-        /**
-         * Push the return environment onto the stack.
-         *
-         * Remember that setjmp returns twice, once on the intial call to
-         * save the registers and the next time on call longjmp.
-         */
-        push_return_env();
-
-        if (setjmp(curr->ret) == 0)
-                return NULL;
-
-        /**
-         * We only reach here if a return statement was hit.
-         * Grab the return value, remove this return env and return it.
-         */
-        struct Value *ret = curr->return_value;
-
-        pop_return_env();
-
-        return ret;
+struct ReturnEnv * get_return_env() {
+        return curr;
 }

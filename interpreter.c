@@ -57,7 +57,24 @@ struct Value *make_value(enum TokenType value)
 {
         struct Value *v = malloc(sizeof(struct Value));
         v->type = value;
+        v->refs = 1;
         return v;
+}
+
+void ref_value(struct Value *v) {
+        v->refs++;
+}
+
+void deref_value(struct Value *v)
+{
+        v->refs--;
+
+        if (v->refs != 0) return; 
+
+        if (v->type == STRING)
+                free(v->s);
+
+        free(v);
 }
 
 int is_truthy(struct Value *v)
@@ -111,6 +128,8 @@ int is_equal(struct Value *l, struct Value *r)
                 return (l->d == r->d);
         } else if (l->type == STRING && r->type == STRING) {
                 return (strcmp(l->s, r->s) == 0);
+        } else if (l->type == NIL && r->type == NIL) {
+                return 1;
         } else {
                 return 0;
         }
@@ -125,7 +144,7 @@ struct Value *visit_literal(struct ExprLiteral *literal)
                 v->d = *((double *)literal->token->literal);
                 break;
         case STRING:
-                v->s = literal->token->literal;
+                v->s = strdup(literal->token->literal);
                 break;
         case TRUE:
                 v->b = true;
@@ -336,7 +355,6 @@ struct Value *visit_assignment(struct ExprAssignment *stmt)
         } else {
                 env_assign(global, stmt->name, v);
         }
-        // env_assign(env, stmt->name, v);
         return v;
 }
 
@@ -473,7 +491,16 @@ void visit_return_stmt(struct ReturnStatement *stmt)
                 v = make_value(NIL);
         }
 
-        return_break(v);
+        /**
+         * Set the return value inside the return environment stack
+         */
+        struct ReturnEnv *ret = get_return_env();
+        ret->return_value = v;
+
+        /**
+         * This unwinds the stack and jumps back to the initial recursive call.
+         */
+        longjmp(ret->ret, 1);
 }
 
 void execute(struct Statement *stmt)
@@ -524,5 +551,4 @@ void interpret(struct Statement *stmts)
         for (; stmts != NULL; stmts = stmts->next) {
                 execute(stmts);
         }
-        free(env);
 }

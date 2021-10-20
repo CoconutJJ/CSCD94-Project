@@ -71,6 +71,7 @@ struct ExprAssignment {
 
 struct Value {
         struct Value *next;
+        int refs;
         union {
                 double d;
                 char *s;
