@@ -71,5 +71,6 @@ struct Value *function_call(struct Environment *global, struct Value *callee,
         env = ret->original_env;
 
         pop_return_env();
+        
         return ret_value;
 }
