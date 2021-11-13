@@ -26,7 +26,7 @@ static char *readFile(const char *path)
 	FILE *file = fopen(path, "rb");
 
 	if (!file) {
-		fprintf(stderr, "Could not open file \"%s\".\n");
+		fprintf(stderr, "Could not open file \"%s\".\n", path);
 		exit(74);
 	}
 

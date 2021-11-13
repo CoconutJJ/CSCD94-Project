@@ -137,7 +137,7 @@ ObjString *tableFindString(Table *table, const char *chars, int length,
 	uint32_t index = hash % table->capacity;
 	for (;;) {
 		Entry *entry = &table->entries[index];
-		if (entry->key = NULL) {
+		if (entry->key == NULL) {
 			if (IS_NIL(entry->value))
 				return NULL;
 
