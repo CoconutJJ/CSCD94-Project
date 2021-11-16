@@ -7,8 +7,10 @@ all: clox
 clean:
 	\rm *.o
 
-clox: main.c chunk.o compiler.o debug.o memory.o object.o scanner.o table.o value.o vm.o
+clox: main.c chunk.o compiler.o debug.o memory.o object.o scanner.o table.o value.o vm.o 
 	$(CC) $(CFLAGS) chunk.o compiler.o debug.o memory.o object.o scanner.o table.o value.o vm.o main.c -o clox
+
+
 
 chunk.o: chunk.c chunk.h
 	$(CC) $(CFLAGS) -c chunk.c -o chunk.o
