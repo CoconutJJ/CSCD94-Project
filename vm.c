@@ -54,6 +54,13 @@ bool nextEvent()
 
 	Event *event = &vm.events[vm.nextEvent++];
 
+	clock_t time = clock();
+
+	if (event->runAt > time) {
+		sleep((event->runAt - time)/CLOCKS_PER_SEC);
+	}
+
+
 	for (Value *sp = event->stack; sp != event->stackTop; sp++) {
 		*vm.stackTop = *sp;
 		vm.stackTop++;
@@ -85,7 +92,7 @@ static Value timerNative(int argCount, Value *args)
 			"timer fn expects second parameter to be function: callback");
 	}
 
-	addEvent(args[1], AS_NUMBER(args[1]));
+	addEvent(args[1], clock() + AS_NUMBER(args[0]) * CLOCKS_PER_SEC);
 
 	return NIL_VAL;
 }
@@ -199,6 +206,7 @@ static bool callValue(Value callee, int argCount)
 			Value result = native(argCount, vm.stackTop - argCount);
 			vm.stackTop -= argCount + 1;
 			push(result);
+			return true;
 		default:
 			break;
 		}
