@@ -10,10 +10,84 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
 VM vm;
+CallFrame *frame;
 
-static Value clockNative(int argCount, Value * args) {
-	return NUMBER_VAL((double)clock()/CLOCKS_PER_SEC);
+static bool callValue(Value callee, int argCount);
+static void runtimeError(const char *format, ...);
+
+
+void initEvent(Event *event)
+{
+	event->ip = NULL;
+	event->runAt = 0;
+	event->stackTop = event->stack;
+}
+
+void addEvent(Value function, clock_t runAt)
+{
+	if (vm.eventCount == EVENTS_MAX) {
+		runtimeError("maximum number of asynchronous events exceeded");
+	}
+
+	Event *event = &vm.events[vm.eventCount++];
+
+	initEvent(event);
+
+	event->function = function;
+	event->ip = AS_FUNCTION(function)->chunk.code;
+	event->runAt = runAt;
+
+	for (Value *sp = vm.stack; sp != vm.stackTop; sp++) {
+		*event->stackTop = *sp;
+		event->stackTop++;
+	}
+}
+
+bool nextEvent()
+{
+	if (vm.nextEvent == vm.eventCount)
+		return false;
+
+	vm.stackTop = vm.stack;
+
+	Event *event = &vm.events[vm.nextEvent++];
+
+	for (Value *sp = event->stack; sp != event->stackTop; sp++) {
+		*vm.stackTop = *sp;
+		vm.stackTop++;
+	}
+
+	if (callValue(event->function, 0)) {
+		frame = &vm.frames[vm.frameCount - 1];
+	}
+
+	return true;
+}
+
+static Value clockNative(int argCount, Value *args)
+{
+	return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
+
+static Value timerNative(int argCount, Value *args)
+{
+	if (argCount != 2) {
+		runtimeError("timer fn expects 2 arguments: nsecs, callback");
+	}
+	if (!IS_NUMBER(args[0])) {
+		runtimeError(
+			"timer fn expects first parameter to be number: nsecs");
+	}
+	if (!IS_FUNCTION(args[1])) {
+		runtimeError(
+			"timer fn expects second parameter to be function: callback");
+	}
+
+	addEvent(args[1], AS_NUMBER(args[1]));
+
+	return NIL_VAL;
 }
 
 static void resetStack()
@@ -45,7 +119,8 @@ static void runtimeError(const char *format, ...)
 	resetStack();
 }
 
-static void defineNative(const char * name, NativeFn function) {
+static void defineNative(const char *name, NativeFn function)
+{
 	push(OBJ_VAL(copyString(name, (int)strlen(name))));
 	push(OBJ_VAL(newNative(function)));
 	tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
@@ -57,10 +132,14 @@ void initVM()
 {
 	resetStack();
 	vm.objects = NULL;
+	vm.eventCount = 0;
+	vm.nextEvent = 0;
+	// vm.async = false;
 	initTable(&vm.globals);
 	initTable(&vm.strings);
 
 	defineNative("clock", clockNative);
+	defineNative("timer", timerNative);
 }
 
 void freeVM()
@@ -104,6 +183,8 @@ static bool call(ObjFunction *function, int argCount)
 	frame->function = function;
 	frame->ip = function->chunk.code;
 	frame->slots = vm.stackTop - argCount - 1;
+
+	return true;
 }
 
 static bool callValue(Value callee, int argCount)
@@ -327,6 +408,11 @@ static InterpretResult run()
 			vm.frameCount--;
 			if (vm.frameCount == 0) {
 				pop();
+
+				if (nextEvent()) {
+					continue;
+				}
+
 				return INTERPRET_OK;
 			}
 			vm.stackTop = frame->slots;

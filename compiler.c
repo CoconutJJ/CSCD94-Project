@@ -741,6 +741,13 @@ static void whileStatement()
 	emitByte(OP_POP);
 }
 
+static void asyncStatement() {
+	consume(TOKEN_IDENTIFIER, "Expected function call after 'async'");
+	consume(TOKEN_LEFT_PAREN, "Expected '(' after function name.");
+	emitByte(OP_ASYNC);
+	call(false);
+}
+
 static void synchronize()
 {
 	parser.panicMode = false;
