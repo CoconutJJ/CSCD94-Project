@@ -104,6 +104,9 @@ void printObject(Value value)
 	case OBJ_STRING:
 		printf("%s", AS_CSTRING(value));
 		break;
+	case OBJ_NATIVE:
+		printf("<native fn>");
+		break;
 	case OBJ_FUNCTION:
 		printFunction(AS_FUNCTION(value));
 		break;

@@ -25,10 +25,12 @@ static void freeObject(Obj *object)
 		ObjFunction *function = (ObjFunction*)object;
 		freeChunk(&function->chunk);
 		FREE(ObjFunction, object);
-	}
-	case OBJ_NATIVE:
-		printf("<native fn>");
 		break;
+	}
+	case OBJ_NATIVE:{
+		FREE(ObjNative, object);
+		break;
+	}
 	case OBJ_STRING:
 		ObjString *string = (ObjString *)object;
 		FREE_ARRAY(char, string->chars, string->length + 1);
