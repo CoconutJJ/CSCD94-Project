@@ -8,19 +8,24 @@
 
 typedef struct {
 	ObjClosure *closure;
-	uint8_t* ip;
+	uint8_t *ip;
 	Value *slots;
 } CallFrame;
 
 typedef struct {
 	CallFrame frames[FRAMES_MAX];
 	int frameCount;
-    Value stack[STACK_MAX];
-    Value * stackTop;
+	Value stack[STACK_MAX];
+	Value *stackTop;
 	Table globals;
 	Table strings;
 	ObjUpvalue *openUpvalues;
-	Obj* objects;
+	Obj *objects;
+	int grayCount;
+	int grayCapacity;
+	size_t bytesAllocated;
+	size_t nextGC;
+	Obj **grayStack;
 } VM;
 
 typedef enum {
@@ -33,7 +38,7 @@ extern VM vm;
 
 void initVM();
 void freeVM();
-InterpretResult interpret(const char * source);
+InterpretResult interpret(const char *source);
 void push(Value value);
 Value pop();
 
