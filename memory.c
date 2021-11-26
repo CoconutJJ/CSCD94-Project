@@ -117,9 +117,10 @@ static void freeObject(Obj *object)
 		ObjFunction *function = (ObjFunction *)object;
 		freeChunk(&function->chunk);
 		FREE(ObjFunction, object);
+		break;
 	}
 	case OBJ_NATIVE:
-		// printf("<native fn>");
+		FREE(ObjNative, object);
 		break;
 	case OBJ_STRING:
 		ObjString *string = (ObjString *)object;
