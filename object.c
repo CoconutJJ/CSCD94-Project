@@ -48,11 +48,34 @@ ObjFunction *newFunction()
 	return function;
 }
 
+ObjProcess *newProcess(int childPid, int pipefd)
+{
+	ObjProcess *proc = ALLOCATE_OBJ(ObjProcess, OBJ_PROCESS);
+	proc->childPid = childPid;
+	proc->readPipeFd = pipefd;
+
+	return proc;
+}
+
 ObjNative *newNative(NativeFn function)
 {
 	ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
 	native->function = function;
 	return native;
+}
+
+// SerializedObjString *newSerializedString(int length) {
+// 	SerializedObjString * str = malloc(sizeof(SerializedObjString) + length);
+// 	str->length = length;
+// 	str->obj.type = OBJ_STRING;
+
+// 	return str;
+// }
+
+void serializeString(ObjString * string, SerializedObjString* serialized) {
+
+	memcpy(serialized->chars, string->chars, string->length);
+
 }
 
 static ObjString *allocateString(char *chars, int length, uint32_t hash)
@@ -145,6 +168,9 @@ void printObject(Value value)
 		break;
 	case OBJ_UPVALUE:
 		printf("upvalue");
+		break;
+	case OBJ_PROCESS:
+		printf("<async process>");
 		break;
 	default:
 		break;

@@ -33,7 +33,8 @@ typedef enum {
 	OP_MULTIPLY,
 	OP_DIVIDE,
 	OP_NOT,
-	OP_RETURN
+	OP_RETURN,
+	OP_CALL_ASYNC
 } OpCode;
 
 typedef struct {

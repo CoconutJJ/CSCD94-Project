@@ -5,7 +5,14 @@
 #include "chunk.h"
 #include "value.h"
 
-typedef enum { OBJ_STRING, OBJ_UPVALUE, OBJ_FUNCTION, OBJ_CLOSURE, OBJ_NATIVE } ObjType;
+typedef enum {
+	OBJ_STRING,
+	OBJ_UPVALUE,
+	OBJ_FUNCTION,
+	OBJ_CLOSURE,
+	OBJ_NATIVE,
+	OBJ_PROCESS
+} ObjType;
 
 struct Obj {
 	ObjType type;
@@ -25,6 +32,12 @@ typedef Value (*NativeFn)(int argCount, Value *args);
 
 typedef struct {
 	Obj obj;
+	int childPid;
+	int readPipeFd;
+} ObjProcess;
+
+typedef struct {
+	Obj obj;
 	NativeFn function;
 } ObjNative;
 
@@ -37,7 +50,7 @@ struct ObjString {
 
 typedef struct ObjUpvalue {
 	Obj obj;
-	Value * location;
+	Value *location;
 	Value closed;
 	struct ObjUpvalue *next;
 } ObjUpvalue;
@@ -70,8 +83,9 @@ ObjFunction *newFunction();
 ObjNative *newNative(NativeFn function);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
-ObjUpvalue *newUpvalue(Value * slot);
-
+ObjUpvalue *newUpvalue(Value *slot);
+ObjProcess *newProcess(int childPid, int pipefd);
+void serializeString(ObjString *string, SerializedObjString *serialized);
 void printObject(Value value);
 
 static inline bool isObjType(Value value, ObjType type)

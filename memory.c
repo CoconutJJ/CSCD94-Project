@@ -159,27 +159,6 @@ static void traceReferences()
 		blackenObject(object);
 	}
 }
-
-void collectGarbage()
-{
-#ifdef DEBUG_LOG_GC
-	printf("-- gc begin\n");
-#endif
-
-	markRoots();
-	traceReferences();
-	tableRemoveWhite(&vm.strings);
-	sweep();
-	size_t before = vm.bytesAllocated;
-	vm.nextGC = vm.bytesAllocated * GC_HEAP_GROW_FACTOR;
-#ifdef DEBUG_LOG_GC
-	printf("-- gc end\n");
-	printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
-	       before - vm.bytesAllocated, before, vm.bytesAllocated,
-	       vm.nextGC);
-#endif
-}
-
 static void sweep()
 {
 	Obj *previous = NULL;
@@ -202,6 +181,26 @@ static void sweep()
 			freeObject(unreached);
 		}
 	}
+}
+
+void collectGarbage()
+{
+#ifdef DEBUG_LOG_GC
+	printf("-- gc begin\n");
+#endif
+
+	markRoots();
+	traceReferences();
+	tableRemoveWhite(&vm.strings);
+	sweep();
+	size_t before = vm.bytesAllocated;
+	vm.nextGC = vm.bytesAllocated * GC_HEAP_GROW_FACTOR;
+#ifdef DEBUG_LOG_GC
+	printf("-- gc end\n");
+	printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+	       before - vm.bytesAllocated, before, vm.bytesAllocated,
+	       vm.nextGC);
+#endif
 }
 
 void freeObjects()

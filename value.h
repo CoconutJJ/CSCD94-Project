@@ -3,11 +3,12 @@
 
 #include "common.h"
 #include "value.h"
-
 typedef struct Obj Obj;
 typedef struct ObjString ObjString;
 
 typedef enum { VAL_BOOL, VAL_NIL, VAL_NUMBER, VAL_OBJ } ValueType;
+
+typedef enum { SER_BOOL, SER_NIL, SER_NUMBER, SER_STRING } SerValueType;
 
 typedef struct {
 	ValueType type;
@@ -17,6 +18,21 @@ typedef struct {
 		Obj *obj;
 	} as;
 } Value;
+
+typedef struct {
+	int length;
+	char chars[];
+} SerializedObjString;
+
+typedef struct {
+	SerValueType type;
+	size_t totalSize;
+	union {
+		bool boolean;
+		double number;
+		SerializedObjString string;
+	} as;
+} SerializedValue;
 
 #define IS_BOOL(value) ((value).type == VAL_BOOL)
 #define IS_NIL(value) ((value).type == VAL_NIL)
@@ -43,4 +59,5 @@ void initValueArray(ValueArray *array);
 void writeValueArray(ValueArray *array, Value value);
 void freeValueArray(ValueArray *array);
 void printValue(Value value);
+SerializedValue *serializeValue(Value value);
 #endif

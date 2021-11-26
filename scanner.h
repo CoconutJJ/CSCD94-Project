@@ -43,7 +43,8 @@ typedef enum {
 	TOKEN_TRUE,
 	TOKEN_VAR,
 	TOKEN_WHILE,
-
+	TOKEN_ASYNC,
+	TOKEN_AWAIT,
 	TOKEN_ERROR,
 	TOKEN_EOF
 } TokenType;

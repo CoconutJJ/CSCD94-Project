@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "object.h"
 #include "memory.h"
 #include "value.h"
@@ -29,6 +29,43 @@ void freeValueArray(ValueArray *array)
 {
 	FREE_ARRAY(Value, array->values, array->capacity);
 	initValueArray(array);
+}
+
+SerializedValue *serializeValue(Value value)
+{
+	size_t serializedSize;
+	ObjString *v = AS_STRING(value);
+
+	switch (value.type) {
+	case VAL_OBJ: {
+		switch (AS_OBJ(value)->type) {
+		case OBJ_STRING: {
+			serializedSize = sizeof(SerializedValue) + v->length;
+			break;
+		}
+		default:
+			return NULL;
+			break;
+		}
+		break;
+	}
+	default:
+		serializedSize = sizeof(SerializedValue);
+		break;
+	}
+
+	SerializedValue *ser = malloc(serializedSize);
+	
+	ser->totalSize = serializedSize;
+
+	if (IS_STRING(value)) {
+		ser->type = SER_STRING;
+		serializeString(v, &(ser->as.string));
+	} else {
+		ser->type = value.type;
+	}
+
+	return ser;
 }
 
 void printValue(Value value)

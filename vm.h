@@ -14,13 +14,20 @@ typedef struct {
 
 typedef struct {
 	CallFrame frames[FRAMES_MAX];
+	
 	int frameCount;
+	int pipeReturn;
+	
 	Value stack[STACK_MAX];
 	Value *stackTop;
+	
 	Table globals;
 	Table strings;
+	
 	ObjUpvalue *openUpvalues;
+	
 	Obj *objects;
+
 	int grayCount;
 	int grayCapacity;
 	size_t bytesAllocated;

@@ -224,7 +224,7 @@ static ObjFunction *endCompiler()
 #ifdef DEBUG_PRINT_CODE
 	if (!parser.hadError) {
 		disassembleChunk(currentChunk(), function->name != NULL ?
-							 function->name->chars :
+							       function->name->chars :
 							       "<script>");
 	}
 #endif
@@ -454,6 +454,7 @@ static void binary(bool canAssign)
 	}
 }
 
+
 static void call(bool canAssign)
 {
 	uint8_t argCount = argumentList();
@@ -538,6 +539,19 @@ static void variable(bool canAssign)
 	namedVariable(parser.previous, canAssign);
 }
 
+static void asyncCall(bool canAssign)
+{
+	uint8_t argCount = argumentList();
+	emitBytes(OP_CALL_ASYNC, argCount);
+}
+static void async(bool canAssign)
+{
+	consume(TOKEN_IDENTIFIER, "expected function name after async");
+	variable(canAssign);
+	consume(TOKEN_LEFT_PAREN, "expected '(' after function name in async");
+	asyncCall(canAssign);
+}
+
 static void unary(bool canAssign)
 {
 	TokenType operatorType = parser.previous.type;
@@ -555,48 +569,48 @@ static void unary(bool canAssign)
 		break;
 	}
 }
-ParseRule rules[] = {
-	[TOKEN_LEFT_PAREN] = { grouping, call, PREC_NONE },
-	[TOKEN_RIGHT_PAREN] = { NULL, NULL, PREC_NONE },
-	[TOKEN_LEFT_BRACE] = { NULL, NULL, PREC_NONE },
-	[TOKEN_RIGHT_BRACE] = { NULL, NULL, PREC_NONE },
-	[TOKEN_COMMA] = { NULL, NULL, PREC_NONE },
-	[TOKEN_DOT] = { NULL, NULL, PREC_NONE },
-	[TOKEN_MINUS] = { unary, binary, PREC_TERM },
-	[TOKEN_PLUS] = { NULL, binary, PREC_TERM },
-	[TOKEN_SEMICOLON] = { NULL, NULL, PREC_NONE },
-	[TOKEN_SLASH] = { NULL, binary, PREC_FACTOR },
-	[TOKEN_STAR] = { NULL, binary, PREC_FACTOR },
-	[TOKEN_BANG] = { unary, NULL, PREC_NONE },
-	[TOKEN_BANG_EQUAL] = { NULL, binary, PREC_EQUALITY },
-	[TOKEN_EQUAL] = { NULL, NULL, PREC_NONE },
-	[TOKEN_EQUAL_EQUAL] = { NULL, binary, PREC_EQUALITY },
-	[TOKEN_GREATER] = { NULL, binary, PREC_COMPARISON },
-	[TOKEN_GREATER_EQUAL] = { NULL, binary, PREC_COMPARISON },
-	[TOKEN_LESS] = { NULL, binary, PREC_COMPARISON },
-	[TOKEN_LESS_EQUAL] = { NULL, binary, PREC_COMPARISON },
-	[TOKEN_IDENTIFIER] = { variable, NULL, PREC_NONE },
-	[TOKEN_STRING] = { string, NULL, PREC_NONE },
-	[TOKEN_NUMBER] = { number, NULL, PREC_NONE },
-	[TOKEN_AND] = { NULL, and_, PREC_AND },
-	[TOKEN_CLASS] = { NULL, NULL, PREC_NONE },
-	[TOKEN_ELSE] = { NULL, NULL, PREC_NONE },
-	[TOKEN_FALSE] = { literal, NULL, PREC_NONE },
-	[TOKEN_FOR] = { NULL, NULL, PREC_NONE },
-	[TOKEN_FUN] = { NULL, NULL, PREC_NONE },
-	[TOKEN_IF] = { NULL, NULL, PREC_NONE },
-	[TOKEN_NIL] = { literal, NULL, PREC_NONE },
-	[TOKEN_OR] = { NULL, or_, PREC_OR },
-	[TOKEN_PRINT] = { NULL, NULL, PREC_NONE },
-	[TOKEN_RETURN] = { NULL, NULL, PREC_NONE },
-	[TOKEN_SUPER] = { NULL, NULL, PREC_NONE },
-	[TOKEN_THIS] = { NULL, NULL, PREC_NONE },
-	[TOKEN_TRUE] = { literal, NULL, PREC_NONE },
-	[TOKEN_VAR] = { NULL, NULL, PREC_NONE },
-	[TOKEN_WHILE] = { NULL, NULL, PREC_NONE },
-	[TOKEN_ERROR] = { NULL, NULL, PREC_NONE },
-	[TOKEN_EOF] = { NULL, NULL, PREC_NONE },
-};
+ParseRule rules[] = { [TOKEN_LEFT_PAREN] = { grouping, call, PREC_CALL },
+		      [TOKEN_RIGHT_PAREN] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_LEFT_BRACE] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_RIGHT_BRACE] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_COMMA] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_DOT] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_MINUS] = { unary, binary, PREC_TERM },
+		      [TOKEN_PLUS] = { NULL, binary, PREC_TERM },
+		      [TOKEN_SEMICOLON] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_SLASH] = { NULL, binary, PREC_FACTOR },
+		      [TOKEN_STAR] = { NULL, binary, PREC_FACTOR },
+		      [TOKEN_BANG] = { unary, NULL, PREC_NONE },
+		      [TOKEN_BANG_EQUAL] = { NULL, binary, PREC_EQUALITY },
+		      [TOKEN_EQUAL] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_EQUAL_EQUAL] = { NULL, binary, PREC_EQUALITY },
+		      [TOKEN_GREATER] = { NULL, binary, PREC_COMPARISON },
+		      [TOKEN_GREATER_EQUAL] = { NULL, binary, PREC_COMPARISON },
+		      [TOKEN_LESS] = { NULL, binary, PREC_COMPARISON },
+		      [TOKEN_LESS_EQUAL] = { NULL, binary, PREC_COMPARISON },
+		      [TOKEN_IDENTIFIER] = { variable, NULL, PREC_NONE },
+		      [TOKEN_STRING] = { string, NULL, PREC_NONE },
+		      [TOKEN_NUMBER] = { number, NULL, PREC_NONE },
+		      [TOKEN_AND] = { NULL, and_, PREC_AND },
+		      [TOKEN_CLASS] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_ELSE] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_FALSE] = { literal, NULL, PREC_NONE },
+		      [TOKEN_FOR] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_FUN] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_IF] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_NIL] = { literal, NULL, PREC_NONE },
+		      [TOKEN_OR] = { NULL, or_, PREC_OR },
+		      [TOKEN_PRINT] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_RETURN] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_SUPER] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_THIS] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_TRUE] = { literal, NULL, PREC_NONE },
+		      [TOKEN_VAR] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_WHILE] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_ERROR] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_EOF] = { NULL, NULL, PREC_NONE },
+		      [TOKEN_ASYNC] = { async, NULL, PREC_CALL },
+		      [TOKEN_AWAIT] = { NULL, NULL, PREC_CALL } };
 static void parsePrecedence(Precedence precedence)
 {
 	advance();
@@ -886,10 +900,11 @@ ObjFunction *compile(const char *source)
 	return parser.hadError ? NULL : function;
 }
 
-void markCompilerRoots() {
+void markCompilerRoots()
+{
 	Compiler *compiler = current;
 	while (compiler != NULL) {
-		markObject((Obj*)compiler->function);
+		markObject((Obj *)compiler->function);
 		compiler = compiler->enclosing;
 	}
 }

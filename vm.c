@@ -10,6 +10,8 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
+
 VM vm;
 
 static Value clockNative(int argCount, Value *args)
@@ -65,6 +67,7 @@ void initVM()
 	vm.grayCount = 0;
 	vm.grayCapacity = 0;
 	vm.grayStack = NULL;
+	vm.pipeReturn = -1;
 
 	initTable(&vm.globals);
 	initTable(&vm.strings);
@@ -113,6 +116,7 @@ static bool call(ObjClosure *closure, int argCount)
 	frame->closure = closure;
 	frame->ip = closure->function->chunk.code;
 	frame->slots = vm.stackTop - argCount - 1;
+	return true;
 }
 
 static bool callValue(Value callee, int argCount)
@@ -378,6 +382,29 @@ static InterpretResult run()
 			frame = &vm.frames[vm.frameCount - 1];
 			break;
 		}
+		case OP_CALL_ASYNC: {
+			int argCount = READ_BYTE();
+			int pid = fork();
+			int pp[2];
+
+			pipe(pp);
+
+			if (pid == 0) {
+				close(pp[0]);
+				vm.frameCount = 0;
+				vm.pipeReturn = pp[1];
+				if (!callValue(peek(argCount), argCount)) {
+					return INTERPRET_RUNTIME_ERROR;
+				}
+				frame = &vm.frames[vm.frameCount - 1];
+
+			} else {
+				close(pp[1]);
+				push(OBJ_VAL(newProcess(pid, pp[0])));
+			}
+
+			break;
+		}
 		case OP_CLOSURE: {
 			ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
 			ObjClosure *closure = newClosure(function);
@@ -405,6 +432,10 @@ static InterpretResult run()
 			Value result = pop();
 			vm.frameCount--;
 			if (vm.frameCount == 0) {
+				if (vm.pipeReturn != -1) {
+					SerializedValue * ser = serializeValue(result);
+					write(vm.pipeReturn, ser, ser->totalSize);
+				}
 				pop();
 				return INTERPRET_OK;
 			}
