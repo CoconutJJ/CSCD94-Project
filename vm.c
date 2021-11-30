@@ -138,6 +138,30 @@ static bool callValue(Value callee, int argCount)
 	return false;
 }
 
+static int spawnAsyncProcess(Value callee, int argCount)
+{
+	int pp[2];
+	pipe(pp);
+
+	int pid = fork();
+
+	if (pid == 0) {
+		close(pp[0]);
+		vm.frameCount = 0;
+		vm.pipeReturn = pp[1];
+		callValue(callee, argCount);
+		return 0;
+
+	} else {
+		close(pp[1]);
+
+		vm.stackTop -= (argCount + 1);
+
+		push(OBJ_VAL(newProcess(pid, pp[0])));
+		return pid;
+	}
+}
+
 static ObjUpvalue *captureUpvalue(Value *local)
 {
 	ObjUpvalue *prevUpvalue = NULL;
@@ -168,7 +192,7 @@ static void closeUpvalues(Value *last)
 	while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
 		ObjUpvalue *upvalue = vm.openUpvalues;
 		upvalue->closed = *upvalue->location;
-		upvalue->location  = &upvalue->closed;
+		upvalue->location = &upvalue->closed;
 		vm.openUpvalues = upvalue->next;
 	}
 }
@@ -384,27 +408,25 @@ static InterpretResult run()
 		}
 		case OP_CALL_ASYNC: {
 			int argCount = READ_BYTE();
-			int pid = fork();
-			int pp[2];
 
-			pipe(pp);
-
-			if (pid == 0) {
-				close(pp[0]);
-				vm.frameCount = 0;
-				vm.pipeReturn = pp[1];
-				if (!callValue(peek(argCount), argCount)) {
-					return INTERPRET_RUNTIME_ERROR;
-				}
+			if (spawnAsyncProcess(peek(argCount), argCount) == 0)
 				frame = &vm.frames[vm.frameCount - 1];
-
-			} else {
-				close(pp[1]);
-				push(OBJ_VAL(newProcess(pid, pp[0])));
-			}
 
 			break;
 		}
+		case OP_AWAIT: {
+			
+			Value e = pop();
+
+			if (!IS_PROCESS(e)) runtimeError("Can only call await on async process handler");
+
+			ObjProcess * proc = AS_PROCESS(e);
+
+			/* function to read from pipe and push value onto stack */
+
+			break;
+		}
+
 		case OP_CLOSURE: {
 			ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
 			ObjClosure *closure = newClosure(function);
@@ -433,8 +455,10 @@ static InterpretResult run()
 			vm.frameCount--;
 			if (vm.frameCount == 0) {
 				if (vm.pipeReturn != -1) {
-					SerializedValue * ser = serializeValue(result);
-					write(vm.pipeReturn, ser, ser->totalSize);
+					SerializedValue *ser =
+						serializeValue(result);
+					write(vm.pipeReturn, ser,
+					      ser->totalSize);
 				}
 				pop();
 				return INTERPRET_OK;

@@ -76,6 +76,9 @@ typedef struct {
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 #define AS_STRING(value) ((ObjString *)AS_OBJ(value))
 
+#define IS_PROCESS(value) isObjType(value, OBJ_PROCESS)
+#define AS_PROCESS(value) ((ObjProcess *)AS_OBJ(value))
+
 #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
 
 ObjClosure *newClosure(ObjFunction *function);

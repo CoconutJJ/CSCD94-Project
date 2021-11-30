@@ -34,7 +34,8 @@ typedef enum {
 	OP_DIVIDE,
 	OP_NOT,
 	OP_RETURN,
-	OP_CALL_ASYNC
+	OP_CALL_ASYNC,
+	OP_AWAIT
 } OpCode;
 
 typedef struct {

@@ -552,6 +552,12 @@ static void async(bool canAssign)
 	asyncCall(canAssign);
 }
 
+static void await(bool canAssign) {
+	
+	parsePrecedence(PREC_CALL);
+	emitByte(OP_AWAIT);
+}
+
 static void unary(bool canAssign)
 {
 	TokenType operatorType = parser.previous.type;
@@ -610,7 +616,7 @@ ParseRule rules[] = { [TOKEN_LEFT_PAREN] = { grouping, call, PREC_CALL },
 		      [TOKEN_ERROR] = { NULL, NULL, PREC_NONE },
 		      [TOKEN_EOF] = { NULL, NULL, PREC_NONE },
 		      [TOKEN_ASYNC] = { async, NULL, PREC_CALL },
-		      [TOKEN_AWAIT] = { NULL, NULL, PREC_CALL } };
+		      [TOKEN_AWAIT] = { await, NULL, PREC_CALL } };
 static void parsePrecedence(Precedence precedence)
 {
 	advance();
