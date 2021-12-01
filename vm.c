@@ -224,6 +224,12 @@ static void writeChildResult(Value result)
 {
 	SerializedValue *ser = serializeValue(result);
 
+	if (!ser) {
+		runtimeError(
+			"can only return strings, numbers, booleans and nil values from async processes");
+		return;
+	}
+
 	write(vm.pipeReturn, &ser->totalSize, sizeof(size_t));
 	write(vm.pipeReturn, ser, ser->totalSize);
 

@@ -56,6 +56,12 @@ SerializedValue *serializeValue(Value value)
 
 	SerializedValue *ser = malloc(serializedSize);
 
+	if (ser == NULL) {
+		perror("malloc");
+		fprintf(stderr, "error: could not allocate enough memory");
+		exit(EXIT_FAILURE);
+	}
+
 	ser->totalSize = serializedSize;
 
 	if (IS_STRING(value)) {
