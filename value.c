@@ -55,14 +55,20 @@ SerializedValue *serializeValue(Value value)
 	}
 
 	SerializedValue *ser = malloc(serializedSize);
-	
+
 	ser->totalSize = serializedSize;
 
 	if (IS_STRING(value)) {
 		ser->type = SER_STRING;
 		serializeString(v, &(ser->as.string));
-	} else {
-		ser->type = value.type;
+	} else if (IS_BOOL(value)) {
+		ser->type = SER_BOOL;
+		ser->as.boolean = AS_BOOL(value);
+	} else if (IS_NIL(value)) {
+		ser->type = SER_NIL;
+	} else if (IS_NUMBER(value)) {
+		ser->type = SER_NUMBER;
+		ser->as.number = AS_NUMBER(value);
 	}
 
 	return ser;

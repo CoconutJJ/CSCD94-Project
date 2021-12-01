@@ -32,6 +32,7 @@ typedef Value (*NativeFn)(int argCount, Value *args);
 
 typedef struct {
 	Obj obj;
+	int ppid;
 	int childPid;
 	int readPipeFd;
 } ObjProcess;

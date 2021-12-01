@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "memory.h"
 #include "object.h"
@@ -51,6 +52,7 @@ ObjFunction *newFunction()
 ObjProcess *newProcess(int childPid, int pipefd)
 {
 	ObjProcess *proc = ALLOCATE_OBJ(ObjProcess, OBJ_PROCESS);
+	proc->ppid = getpid();
 	proc->childPid = childPid;
 	proc->readPipeFd = pipefd;
 
@@ -74,6 +76,7 @@ ObjNative *newNative(NativeFn function)
 
 void serializeString(ObjString * string, SerializedObjString* serialized) {
 
+	serialized->length = string->length;
 	memcpy(serialized->chars, string->chars, string->length);
 
 }

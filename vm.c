@@ -5,13 +5,15 @@
 #include "debug.h"
 #include "object.h"
 #include "memory.h"
-
+#include "value.h"
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <unistd.h>
-
+#include <sys/types.h>
+#include <sys/wait.h>
 VM vm;
 
 static Value clockNative(int argCount, Value *args)
@@ -160,6 +162,72 @@ static int spawnAsyncProcess(Value callee, int argCount)
 		push(OBJ_VAL(newProcess(pid, pp[0])));
 		return pid;
 	}
+}
+
+Value processChildReturn(Value process)
+{
+	if (!IS_PROCESS(process)) {
+		runtimeError("can only call await on async process handler");
+		return NIL_VAL;
+	}
+
+	ObjProcess *child = AS_PROCESS(process);
+
+	if (child->ppid != getpid()) {
+		runtimeError("can only call await in parent process");
+		return NIL_VAL;
+	}
+
+	int childReturnCode;
+
+	waitpid(child->childPid, &childReturnCode, 0);
+
+	if (childReturnCode != INTERPRET_OK) {
+		return NIL_VAL;
+	}
+
+	size_t totalSize;
+
+	read(child->readPipeFd, &totalSize, sizeof(size_t));
+
+	char childData[totalSize];
+
+	read(child->readPipeFd, childData, totalSize);
+
+	SerializedValue *v = (SerializedValue *)&childData[0];
+
+	switch (v->type) {
+	case SER_BOOL: {
+		return BOOL_VAL(v->as.boolean);
+	}
+	case SER_NIL: {
+		return NIL_VAL;
+		break;
+	}
+	case SER_NUMBER: {
+		return NUMBER_VAL(v->as.number);
+		break;
+	}
+	case SER_STRING: {
+		return OBJ_VAL(
+			copyString(v->as.string.chars, v->as.string.length));
+		break;
+	}
+	default:
+		runtimeError("unknown child return value");
+		break;
+	}
+	return NIL_VAL;
+}
+
+static void writeChildResult(Value result)
+{
+	SerializedValue *ser = serializeValue(result);
+
+	write(vm.pipeReturn, &ser->totalSize, sizeof(size_t));
+	write(vm.pipeReturn, ser, ser->totalSize);
+
+	free(ser);
 }
 
 static ObjUpvalue *captureUpvalue(Value *local)
@@ -415,15 +483,9 @@ static InterpretResult run()
 			break;
 		}
 		case OP_AWAIT: {
-			
 			Value e = pop();
-
-			if (!IS_PROCESS(e)) runtimeError("Can only call await on async process handler");
-
-			ObjProcess * proc = AS_PROCESS(e);
-
-			/* function to read from pipe and push value onto stack */
-
+			Value childResult = processChildReturn(e);
+			push(childResult);
 			break;
 		}
 
@@ -455,10 +517,7 @@ static InterpretResult run()
 			vm.frameCount--;
 			if (vm.frameCount == 0) {
 				if (vm.pipeReturn != -1) {
-					SerializedValue *ser =
-						serializeValue(result);
-					write(vm.pipeReturn, ser,
-					      ser->totalSize);
+					writeChildResult(result);
 				}
 				pop();
 				return INTERPRET_OK;
